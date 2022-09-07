@@ -7,7 +7,7 @@ import epic_image_pb2
 import json
 import time
 
-_CHUNK_SIZE_=int(120000)
+_CHUNK_SIZE_=int(819200)
 
 def get_epic_ppro_uds_id():
     """
