@@ -6,6 +6,8 @@ import epic_image_pb2
 import json
 import numpy as np
 import socket
+from astropy.wcs import WCS
+from astropy.io.fits import Header
 
 class epic_postprocessor(epic_image_pb2_grpc.epic_post_processServicer):
     def filter_and_save(self, request, context):
@@ -23,7 +25,9 @@ class epic_postprocessor(epic_image_pb2_grpc.epic_post_processServicer):
         img_cube=bytes()
         for image in request_iterator:
             if header_recvd_flag is False and image.header is not None:
-                print(json.loads(image.header))
+                #print(json.loads(image.header))
+                print(Header.fromstring(image.header).keys())
+                print(WCS(Header.fromstring(image.header)))
                 header_recvd_flag = True
             img_cube += image.image_cube
         #decode the numpy array

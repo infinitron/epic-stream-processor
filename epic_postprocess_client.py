@@ -6,6 +6,7 @@ import epic_image_pb2_grpc
 import epic_image_pb2
 import json
 import time
+from astropy.io import fits
 
 _CHUNK_SIZE_=int(819200)
 
@@ -33,11 +34,14 @@ def chunk_data(header,data):
 
 
 def get_dummy_data():
-    for i in range(10):
-        header = json.dumps(dict(a=1,b=2))
-        data = np.random.random(64*64*100*4*2) #
-        time.sleep(1)
-        yield chunk_data(header,data)
+    with fits.open('EPIC_1661990950.000000_73.487MHz.fits') as hdu:
+        for i in range(10):
+            #header = json.dumps(dict(a=1,b=2))
+            #ata = np.random.random(64*64*32*4*2) #
+            header = hdu[1].header.tostring()
+            data = hdu[1].data
+            time.sleep(1)
+            yield chunk_data(header,data)
 
 def run():
     with grpc.insecure_channel(get_epic_ppro_uds_id(),
