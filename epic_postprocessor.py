@@ -6,11 +6,11 @@ import epic_image_pb2
 import json
 import numpy as np
 import socket
-from astropy.wcs import WCS
-from astropy.io.fits import Header
 
 from Watchdog import WatchDog
-watcher = WatchDog()
+from ServiceHub import ServiceHub
+servicer = ServiceHub()
+watcher = WatchDog(servicer)
 
 
 class epic_postprocessor(epic_image_pb2_grpc.epic_post_processServicer):
@@ -29,9 +29,6 @@ class epic_postprocessor(epic_image_pb2_grpc.epic_post_processServicer):
         img_cube = bytes()
         for image in request_iterator:
             if header_recvd_flag is False and image.header is not None:
-                # print(json.loads(image.header))
-                print(Header.fromstring(image.header).keys())
-                print(WCS(Header.fromstring(image.header)))
                 header = image.header
                 header_recvd_flag = True
             img_cube += image.image_cube
