@@ -1,11 +1,12 @@
 import psycopg
 from apscheduler.schedulers.background import BackgroundScheduler
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta
+from pytz import utc
 
 
 class ServiceHub(object):
     _pg_conn = None
-    _scheduler = BackgroundScheduler(timezone=timezone.utc)
+    _scheduler = BackgroundScheduler(timezone=utc)
 
     def __init__(self) -> None:
         """connect to ectd and and also have a scheduler from apscheduler"""
@@ -21,16 +22,16 @@ class ServiceHub(object):
         # establish postgres connection
         # TODO: fetch the connection details from sys config service
         pg_conn_params = dict(
-            host="localhost", database="postgres", user="postgres")
+             dbname="postgres", user="batman")
         try:
             self._pg_conn = psycopg.connect(**pg_conn_params)
-            # self._pg_cursor = self._pg_conn.cursor()
+            print('Postgres connection established')
         except Exception as e:
             print(e)
             print('Retrying connection in 60 seconds')
-            self.schedule_job_delay(self._connect_pgdb, (self), 60)
+            self.schedule_job_delay(self._connect_pgdb, None, 60)
 
-    def pg_query(self, query, args):
+    def pg_query(self, query, args=None):
         if self._pg_conn is None:
             raise (ConnectionRefusedError(
                 "Could not establish connection to the pgdb"))
