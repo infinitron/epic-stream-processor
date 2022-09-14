@@ -1,14 +1,14 @@
-from functools import cache
+from functools import lru_cache
 import numpy as np
 
 
 class PatchMan:
     @ staticmethod
-    @ cache
+    @ lru_cache(maxsize=None)
     def get_patch_indices(patch_type='3x3'):
+        patch = patch_type
         if type(patch_type) == str:
             patch = int(patch_type.split('x')[0])
-        patch = patch_type
 
         return np.meshgrid(np.arange(patch)-int(patch/2),
                            np.arange(patch)-int(patch/2))
