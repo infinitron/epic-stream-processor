@@ -5,6 +5,8 @@ from astropy.io.fits import Header
 from itertools import chain
 from Utils import PatchMan
 import numpy as np
+from uuid import uuid4
+import ServiceHub
 
 
 class WatchDog(object):
@@ -12,7 +14,7 @@ class WatchDog(object):
     Monitors the locations of specified sources on EPIC images.
     """
 
-    def __init__(self, serviceHub):
+    def __init__(self, serviceHub: ServiceHub):
         self._service_Hub = serviceHub
         self._watch_df = pd.DataFrame(
             columns=['id', 'source_name', 'ra', 'dec', 'patch_type'])
@@ -81,7 +83,7 @@ class WatchDog(object):
             source_pixel_df, 'pixel')
 
         # generate pixel patches for each source
-        # each patch cell contains a list of patch pixels (x or y)
+        # each patch cell in the df contains a list of patch pixels (x or y)
         source_pixel_df[['xpatch', 'ypatch']] = source_pixel_df.apply(
             lambda x: pd.Series([
                 PatchMan.get_patch_pixels(x['pixel'], x['patch_type'])[
@@ -129,6 +131,63 @@ class WatchDog(object):
 
         # columns patch_name <list of sources>, patch_pixel, patch_skypos
         return source_patch_df
+
+    @staticmethod
+    def header_to_metadict(image_hdr: str, epic_version: str):
+        ihdr = Header.fromstring(image_hdr)
+        return dict(id=[str(uuid4())],
+                    img_time=[datetime.strptime(
+                        ihdr['DATETIME'], '%Y-%m-%dT%H:%M:%S.%f')],
+                    n_chan=[int(ihdr['NAXIS3'])],
+                    n_pol=[int(ihdr['NAXIS4'])],
+                    chan0=[ihdr['CRVAL3'] -
+                           ihdr['CDELT3'] * ihdr['CRPIX3']],
+                    chan_bw=[ihdr['CDELT3']],
+                    epic_version=[epic_version],
+                    img_size=[str((ihdr['NAXIS1'], ihdr['NAXIS2']))])
+
+    @staticmethod
+    def insert_pixels_df(df: pd.DataFrame, pixels: np.ndarray,
+                         pixel_idx_col: str = 'patch_pixels',
+                         val_col: str = 'pixel_values',):
+        df[val_col] = df[pixel_idx_col].apply(
+            lambda x: pixels[:, :, :, x[1], x[0]].ravel().tolist()
+        )
+        return df
+
+    @staticmethod
+    def format_skypos_pg(df: pd.DataFrame,
+                         skypos_col: str = 'patch_skypos',
+                         skypos_fmt_col: str = 'pixel_skypos'):
+        df[skypos_fmt_col] = df[skypos_col].apply(
+            lambda x: f'SRID=4326;POINT({x[0]} {x[1]})')
+
+        return df
+
+    def filter_and_store_imgdata(self, header: str,
+                                 img_array: np.ndarray,
+                                 epic_version: str = '0.0.2'):
+        pixel_idx_df = self.get_watch_indices(header)
+        pixel_meta_df = pd.DataFrame.from_dict(
+            self.header_to_metadict(header, epic_version=epic_version))
+        pixel_idx_df['id'] = pixel_meta_df.iloc[0]['id']
+
+        pixel_idx_df = self.insert_pixels_df(
+            pixel_idx_df,
+            img_array, pixel_idx_col='patch_pixels', val_col='pixel_values')
+
+        pixel_idx_df = self.format_skypos_pg(
+            pixel_idx_df, 'patch_skypos', 'pixel_skypos')
+
+        pixel_idx_df['pixel_coord'] = pixel_idx_df['patch_pixels'].astype(str)
+        pixel_idx_df['source_names'] = pixel_idx_df['patch_name']
+        pixel_idx_df = pixel_idx_df[[
+            'id', 'pixel_values', 'pixel_coord',
+            'pixel_skypos', 'source_names']]
+
+        self._service_Hub.insert_into_db(pixel_idx_df, pixel_meta_df)
+
+        return pixel_idx_df, pixel_meta_df
 
     def _remove_source(self, id: str):
         self._watch_df.drop(
