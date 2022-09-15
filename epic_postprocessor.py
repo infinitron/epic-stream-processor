@@ -5,6 +5,7 @@ import epic_image_pb2_grpc
 import epic_image_pb2
 import json
 import numpy as np
+from numpy.lib.stride_tricks import as_strided
 import socket
 
 from Watchdog import WatchDog
@@ -24,19 +25,40 @@ class epic_postprocessor(epic_image_pb2_grpc.epic_post_processServicer):
         return epic_image_pb2.empty()
 
     def filter_and_save_chunk(self, request_iterator, context):
-        header = ''
-        header_recvd_flag = False
+        header = []
         img_cube = bytes()
         for image in request_iterator:
-            if header_recvd_flag is False and image.header is not None:
-                header = image.header
-                header_recvd_flag = True
+            if image.header is not None:
+                header.append(image.header)
             img_cube += image.image_cube
-        # decode the numpy array
-        img_cube = np.frombuffer(img_cube)
 
-        pixel_idx = watcher.get_watch_indices(header)
-        print(img_cube.shape, pixel_idx)
+        header = json.loads(header[0])
+        # 0: primaryHDU, 1: Image, 2: buffer details
+        buffer_metadata = json.loads(header[2])
+
+        # decode the numpy array
+        img_cube = np.frombuffer(img_cube, dtype=buffer_metadata['dtype'])
+        img_cube = as_strided(img_cube,
+                              buffer_metadata['shape'],
+                              buffer_metadata['strides'])
+
+        # pixel_idx_df = watcher.get_watch_indices(header[1])
+        # pixel_meta_df = pd.DataFrame.from_dict(
+        #     watcher.header_to_metadict(header[1], epic_version='0.0.2'))
+        # pixel_idx_df['id'] = pixel_meta_df.iloc[0]['uuid']
+
+        # pixel_idx_df = watcher.insert_pixels_df(
+        #     pixel_idx_df,
+        #     img_cube, pixel_idx_col='patch_pixels', val_col='pixel_values')
+
+        # pixel_idx_df = watcher.format_skypos_pg(
+        #     pixel_idx_df, 'patch_skypos', 'pixel_skypos')
+
+        pixel_idx_df, pixel_meta_df = watcher.filter_and_store_imgdata(
+            header[1], img_cube, epic_version='0.0.2')
+
+        # print()
+        print(img_cube.shape, pixel_idx_df.columns, pixel_meta_df.columns)
         return epic_image_pb2.empty()
 
 
