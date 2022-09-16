@@ -21,3 +21,17 @@ class PatchMan:
             return (xgrid+pixel[0]).flatten(), (ygrid+pixel[1]).flatten()
         else:
             return (xgrid+x).flatten(), (ygrid+y).flatten()
+
+
+@lru_cache
+def get_lmn_grid(xsize: int, ysize: int):
+    lm_matrix = np.zeros(shape=(xsize, ysize, 3))
+    m_step = 2.0 / ysize
+    l_step = 2.0/xsize
+    i, j = np.meshgrid(np.arange(xsize), np.arange(ysize))
+    # this builds a 3 x 64 x 64 matrix, need to transpose axes to [2, 1, 0]
+    #  to getcorrect 64 x 64 x 3 shape
+    lm_matrix = np.asarray(
+        [i * l_step - 1.0, j * m_step - 1.0, np.zeros_like(j)])
+
+    return lm_matrix

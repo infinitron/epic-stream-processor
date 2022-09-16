@@ -3,7 +3,7 @@ import pandas as pd
 from astropy.wcs import WCS
 from astropy.io.fits import Header
 from itertools import chain
-from Utils import PatchMan
+from Utils import PatchMan, get_lmn_grid
 import numpy as np
 from uuid import uuid4
 import ServiceHub
@@ -147,6 +147,16 @@ class WatchDog(object):
                     img_size=[str((ihdr['NAXIS1'], ihdr['NAXIS2']))])
 
     @staticmethod
+    def insert_lm_coords_df(df: pd.DataFrame, xsize: int,
+                            ysize: int, pixel_idx_col: str,
+                            lm_coord_col: str):
+        lmn_grid = get_lmn_grid(xsize, ysize)
+        df[lm_coord_col] = df[pixel_idx_col].apply(
+            lambda x: str((lmn_grid[0, x[0]-1, x[1]-1],
+                           lmn_grid[1, x[0]-1, x[1]-1])))
+        return df
+
+    @ staticmethod
     def insert_pixels_df(df: pd.DataFrame, pixels: np.ndarray,
                          pixel_idx_col: str = 'patch_pixels',
                          val_col: str = 'pixel_values',):
@@ -155,7 +165,7 @@ class WatchDog(object):
         )
         return df
 
-    @staticmethod
+    @ staticmethod
     def format_skypos_pg(df: pd.DataFrame,
                          skypos_col: str = 'patch_skypos',
                          skypos_fmt_col: str = 'pixel_skypos'):
@@ -179,11 +189,16 @@ class WatchDog(object):
         pixel_idx_df = self.format_skypos_pg(
             pixel_idx_df, 'patch_skypos', 'pixel_skypos')
 
+        xsize, ysize = img_array.shape[4], img_array.shape[3]
+
+        pixel_idx_df = self.insert_lm_coords_df(
+            pixel_idx_df, xsize, ysize, 'patch_pixels', 'pixel_lm')
+
         pixel_idx_df['pixel_coord'] = pixel_idx_df['patch_pixels'].astype(str)
         pixel_idx_df['source_names'] = pixel_idx_df['patch_name']
         pixel_idx_df = pixel_idx_df[[
             'id', 'pixel_values', 'pixel_coord',
-            'pixel_skypos', 'source_names']]
+            'pixel_skypos', 'source_names', 'pixel_lm']]
 
         self._service_Hub.insert_into_db(pixel_idx_df, pixel_meta_df)
 
