@@ -1,3 +1,5 @@
+from numbers import Number
+from typing import Iterator, Callable
 import psycopg
 from apscheduler.schedulers.background import BackgroundScheduler
 from datetime import datetime, timedelta
@@ -44,15 +46,15 @@ class ServiceHub(object):
             self.schedule_job_delay(self._connect_pgdb, None, 60)
 
     def insert_into_db(self, pixel_df: pd.DataFrame,
-                       pixel_meta_df: pd.DataFrame):
+                       pixel_meta_df: pd.DataFrame) -> None:
         self._pipeline.emit(dict(pixels=pixel_df, meta=pixel_meta_df))
 
     @staticmethod
-    def detect_transient(upstream):
+    def detect_transient(upstream: object) -> object:
         return upstream
 
     @staticmethod
-    def insert_pgdb(upstream: list):
+    def insert_pgdb(upstream: list) -> None:
         pixels_df = []
         metadata_df = []
 
@@ -76,7 +78,7 @@ class ServiceHub(object):
                            con=ServiceHub._pg_engine,
                            if_exists='append', index=False)
 
-    def pg_query(self, query, args=None):
+    def pg_query(self, query: str, args: tuple = None) -> Iterator:
         if self._pg_conn is None:
             raise (ConnectionRefusedError(
                 "Could not establish connection to the pgdb"))
@@ -85,12 +87,14 @@ class ServiceHub(object):
             # self._pg_conn.commit()
             return result
 
-    def schedule_job_delay(self, func, args=None, seconds=604800):
+    def schedule_job_delay(self, func: Callable, args: tuple = None,
+                           seconds: Number = 604800) -> None:
         self._scheduler.add_job(
             func, trigger='date', args=args,
             run_date=datetime.now()+timedelta(seconds))
 
-    def schedule_job_date(self, func, args=None, timestamp=datetime.now()):
+    def schedule_job_date(self, func: Callable, args: tuple = None,
+                          timestamp: datetime = datetime.now()) -> None:
         self._scheduler.add_job(
             func, trigger='date', args=args,
             run_date=timestamp)

@@ -7,6 +7,8 @@ from Utils import PatchMan, get_lmn_grid
 import numpy as np
 from uuid import uuid4
 import ServiceHub
+from epic_types import list_t, patch_t, watch_mode_t
+from typing import Tuple
 
 
 class WatchDog(object):
@@ -25,47 +27,56 @@ class WatchDog(object):
                  patch_type=['3x3', '3x3']))])
         print('DF', self._watch_df)
 
-    def watch_source(self, id, name, ra, dec, watch_until=None,
-                     watch_mode='continuous', patch_type='3x3'):
+    def watch_source(self, id: int, name: str, ra: float, dec: float,
+                     watch_until: float = None,
+                     watch_mode: watch_mode_t = 'continuous',
+                     patch_type: patch_t = '3x3') -> None:
         self._watch_df.append(dict(
             source_name=name, ra=ra, dec=dec,
             patch_type=patch_type), ignore_index=True)
         if watch_mode != 'continuous':
-            self._add_timer(f'{id}', watch_until)
+            self._add_watch_timer(f'{id}', watch_until)
 
-    def add_voevent_and_watch(self, voevent):
+    def add_voevent_and_watch(self, voevent: str) -> None:
         raise NotImplementedError(
             'External VOEvent handler not implemented yet')
 
-    def add_source_and_watch(self, source_name, ra, dec,
-                             watch_mode='continuous',
-                             patch_type='3x3', reason='Detection of FRBs',
-                             author='batman', event_type='FRB followup',
-                             event_time=datetime.now(), t_start=datetime.now(),
-                             t_end=datetime.now()+timedelta(604800)):
+    def add_source_and_watch(self, source_name: str, ra: float, dec: float,
+                             watch_mode: watch_mode_t = 'continuous',
+                             patch_type: patch_t = '3x3',
+                             reason: str = 'Detection of FRBs',
+                             author: str = 'batman',
+                             event_type: str = 'FRB followup',
+                             event_time: datetime = datetime.now(),
+                             t_start: datetime = datetime.now(),
+                             t_end: datetime = datetime.now()+timedelta(604800)
+                             ) -> None:
         raise NotImplementedError(
             'Manual source watching is not Implemented yet')
 
-    def get_list(self):
+    def get_list(self) -> pd.DataFrame:
         return \
             self._watch_df[['source_name',
                             'skycoord', 'patch_type']]
 
-    def _flatten_series(self, series):
+    def _flatten_series(self, series: pd.Series) -> list:
         return list(chain.from_iterable(series))
 
-    def _remove_outside_sky_sources(self, df: pd.DataFrame, pos_column: str):
+    def _remove_outside_sky_sources(self, df: pd.DataFrame,
+                                    pos_column: str) -> pd.DataFrame:
         return df[~(df[pos_column].apply(lambda x: np.isnan(x).any()))]
 
     def _remove_outside_sky_patches(self, df: pd.DataFrame,
-                                    src_column: str, pos_column: str):
+                                    src_column: str,
+                                    pos_column: str) -> pd.DataFrame:
         outside_sources = df[(
             df[pos_column].apply(
                 lambda x: np.isnan(x).any()))][src_column].unique()
 
         return df[~(df[src_column].isin(outside_sources))]
 
-    def get_watch_indices(self, header_str: str, img_axes=[1, 2]):
+    def get_watch_indices(self, header_str: str,
+                          img_axes: list_t = [1, 2]) -> pd.DataFrame:
         header = Header.fromstring(header_str)
         wcs = WCS(header, naxis=img_axes)
         sources = self._watch_df['source_name']
@@ -86,10 +97,10 @@ class WatchDog(object):
         # each patch cell in the df contains a list of patch pixels (x or y)
         source_pixel_df[['xpatch', 'ypatch']] = source_pixel_df.apply(
             lambda x: pd.Series([
-                PatchMan.get_patch_pixels(x['pixel'], x['patch_type'])[
-                    0].tolist(),
                 PatchMan.get_patch_pixels(
-                    x['pixel'], x['patch_type'])[1].tolist()
+                    x['pixel'], patch_type=x['patch_type'])[0].tolist(),
+                PatchMan.get_patch_pixels(
+                    x['pixel'], patch_type=x['patch_type'])[1].tolist()
             ], index=['xpatch', 'ypatch']),
             axis=1)
 
@@ -133,7 +144,7 @@ class WatchDog(object):
         return source_patch_df
 
     @staticmethod
-    def header_to_metadict(image_hdr: str, epic_version: str):
+    def header_to_metadict(image_hdr: str, epic_version: str) -> dict:
         ihdr = Header.fromstring(image_hdr)
         return dict(id=[str(uuid4())],
                     img_time=[datetime.strptime(
@@ -149,7 +160,7 @@ class WatchDog(object):
     @staticmethod
     def insert_lm_coords_df(df: pd.DataFrame, xsize: int,
                             ysize: int, pixel_idx_col: str,
-                            lm_coord_col: str):
+                            lm_coord_col: str) -> pd.DataFrame:
         lmn_grid = get_lmn_grid(xsize, ysize)
         df[lm_coord_col] = df[pixel_idx_col].apply(
             lambda x: str((lmn_grid[0, x[0]-1, x[1]-1],
@@ -159,7 +170,7 @@ class WatchDog(object):
     @ staticmethod
     def insert_pixels_df(df: pd.DataFrame, pixels: np.ndarray,
                          pixel_idx_col: str = 'patch_pixels',
-                         val_col: str = 'pixel_values',):
+                         val_col: str = 'pixel_values') -> pd.DataFrame:
         df[val_col] = df[pixel_idx_col].apply(
             lambda x: pixels[:, :, :, x[1], x[0]].ravel().tolist()
         )
@@ -168,7 +179,7 @@ class WatchDog(object):
     @ staticmethod
     def format_skypos_pg(df: pd.DataFrame,
                          skypos_col: str = 'patch_skypos',
-                         skypos_fmt_col: str = 'pixel_skypos'):
+                         skypos_fmt_col: str = 'pixel_skypos') -> pd.DataFrame:
         df[skypos_fmt_col] = df[skypos_col].apply(
             lambda x: f'SRID=4326;POINT({x[0]} {x[1]})')
 
@@ -176,7 +187,8 @@ class WatchDog(object):
 
     def filter_and_store_imgdata(self, header: str,
                                  img_array: np.ndarray,
-                                 epic_version: str = '0.0.2'):
+                                 epic_version: str = '0.0.2'
+                                 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         pixel_idx_df = self.get_watch_indices(header)
         pixel_meta_df = pd.DataFrame.from_dict(
             self.header_to_metadict(header, epic_version=epic_version))
@@ -204,7 +216,7 @@ class WatchDog(object):
 
         return pixel_idx_df, pixel_meta_df
 
-    def _remove_source(self, id: str):
+    def _remove_source(self, id: str) -> None:
         self._watch_df.drop(
             (self._watch_df[self._watch_df['id'] == id]).index, inplace=True)
         self._service_Hub.query(
@@ -214,7 +226,7 @@ class WatchDog(object):
         self._service_Hub.schedule_job_date(
             self._remove_source, args=(id), timestamp=date)
 
-    def _load_sources(self, overwrite=False):
+    def _load_sources(self, overwrite: bool = False) -> None:
         if self._watch_df.shape[0] > 0 and overwrite is False:
             raise Exception(
                 'Sources are already being watched and overwrite is \
