@@ -1,7 +1,7 @@
 """Services for processing data streams from EPIC"""
 
-from . import ServiceHub
-from . import Watchdog
+from . import service_hub
+from . import watch_dog
 
 
-__all__ = ["ServiceHub", "Watchdog"]
+__all__ = ["service_hub", "watch_dog"]

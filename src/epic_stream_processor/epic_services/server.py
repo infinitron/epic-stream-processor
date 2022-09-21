@@ -10,8 +10,8 @@ from epic_grpc.epic_image_pb2_grpc import (
     epic_post_processServicer as epic_post_servicer,
 )
 from numpy.lib.stride_tricks import as_strided
-from ServiceHub import ServiceHub
-from Watchdog import WatchDog
+from .service_hub import ServiceHub
+from .watch_dog import WatchDog
 
 
 storage_servicer = ServiceHub()

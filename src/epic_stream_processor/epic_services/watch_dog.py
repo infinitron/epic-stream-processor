@@ -19,7 +19,7 @@ from astropy.wcs import WCS
 
 from ..epic_types import Patch_t
 from ..epic_types import WatchMode_t
-from .ServiceHub import ServiceHub
+from .service_hub import ServiceHub
 
 
 T = TypeVar("T")
