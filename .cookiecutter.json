@@ -1,0 +1,14 @@
+{
+  "_output_dir": "/home/batman/dev",
+  "_template": "gh:cjolowicz/cookiecutter-hypermodern-python",
+  "author": "Karthik Reddy",
+  "copyright_year": "2022",
+  "development_status": "Development Status :: 1 - Planning",
+  "email": "karthik.reddy.s@asu.edu",
+  "friendly_name": "Epic Stream Processor",
+  "github_user": "infinitron",
+  "license": "MIT",
+  "package_name": "epic_stream_processor",
+  "project_name": "epic-stream-processor",
+  "version": "0.0.1"
+}
