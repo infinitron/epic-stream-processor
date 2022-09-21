@@ -90,19 +90,19 @@ class WatchDog:
     def get_list(self) -> pd.DataFrame:  # type: ignore[no-any-unimported]
         return self._watch_df[["source_name", "skycoord", "patch_type"]]
 
-    def _flatten_series(
-        self, series: pd.Series[T]  # type: ignore[no-any-unimported]
+    def _flatten_series(  # type: ignore[no-any-unimported]
+        self, series: pd.Series[T]
     ) -> List[T]:
         return list(chain.from_iterable(series))
 
-    def _remove_outside_sky_sources(
-        self, df: pd.DataFrame, pos_column: str  # type: ignore[no-any-unimported]
+    def _remove_outside_sky_sources(  # type: ignore[no-any-unimported]
+        self, df: pd.DataFrame, pos_column: str
     ) -> pd.DataFrame:
         return df[~(df[pos_column].apply(lambda x: np.isnan(x).any()))]
 
-    def _remove_outside_sky_patches(
+    def _remove_outside_sky_patches(  # type: ignore[no-any-unimported]
         self,
-        df: pd.DataFrame,  # type: ignore[no-any-unimported]
+        df: pd.DataFrame,
         src_column: str,
         pos_column: str,
     ) -> pd.DataFrame:
@@ -112,9 +112,9 @@ class WatchDog:
 
         return df[~(df[src_column].isin(outside_sources))]
 
-    def get_watch_indices(
+    def get_watch_indices(  # type: ignore[no-any-unimported]
         self,
-        header_str: str,  # type: ignore[no-any-unimported]
+        header_str: str,
         img_axes: List[int] = [1, 2],
     ) -> pd.DataFrame:
         header = Header.fromstring(header_str)
@@ -203,9 +203,9 @@ class WatchDog:
         )
 
     @staticmethod
-    def insert_lm_coords_df(
+    def insert_lm_coords_df(  # type: ignore[no-any-unimported]
         df: pd.DataFrame,
-        xsize: int,  # type: ignore[no-any-unimported]
+        xsize: int,
         ysize: int,
         pixel_idx_col: str,
         lm_coord_col: str,
@@ -219,9 +219,9 @@ class WatchDog:
         return df
 
     @staticmethod
-    def insert_pixels_df(
+    def insert_pixels_df(  # type: ignore[no-any-unimported]
         df: pd.DataFrame,
-        pixels: npt.NDArray[np.float64],  # type: ignore[no-any-unimported]
+        pixels: npt.NDArray[np.float64],
         pixel_idx_col: str = "patch_pixels",
         val_col: str = "pixel_values",
     ) -> pd.DataFrame:
@@ -231,8 +231,8 @@ class WatchDog:
         return df
 
     @staticmethod
-    def format_skypos_pg(
-        df: pd.DataFrame,  # type: ignore[no-any-unimported]
+    def format_skypos_pg(  # type: ignore[no-any-unimported]
+        df: pd.DataFrame,
         skypos_col: str = "patch_skypos",
         skypos_fmt_col: str = "pixel_skypos",
     ) -> pd.DataFrame:
@@ -242,9 +242,9 @@ class WatchDog:
 
         return df
 
-    def filter_and_store_imgdata(
+    def filter_and_store_imgdata(  # type: ignore[no-any-unimported]
         self,
-        header: str,  # type: ignore[no-any-unimported]
+        header: str,
         img_array: npt.NDArray[np.float64],
         epic_version: str = "0.0.2",
     ) -> Tuple[pd.DataFrame, pd.DataFrame]:

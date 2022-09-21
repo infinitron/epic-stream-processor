@@ -22,13 +22,11 @@ def get_epic_ppro_uds_id() -> str:
     Query the central registry to get the UDS ID
     """
     # querying logic
-    return (
-        f"unix-abstract:{socket.gethostname()}_epic_processor"  # aaaaaaaaaaaaaaaaaaaaa
-    )
+    return f"unix-abstract:{socket.gethostname()}_epic_processor"
 
 
-def chunk_data(
-    headers: List[str],  # type: ignore[no-any-unimported]
+def chunk_data(  # type: ignore[no-any-unimported]
+    headers: List[str],
     data: NDArrayNum_t,
     chunk_size: int = 819200,
 ) -> Iterator[epic_image]:

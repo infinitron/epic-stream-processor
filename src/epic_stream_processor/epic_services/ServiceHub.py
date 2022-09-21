@@ -4,12 +4,7 @@ from datetime import datetime
 from datetime import timedelta
 from typing import Any
 from typing import Callable
-from typing import Dict
-from typing import List
-from typing import Optional
-from typing import Tuple
 from typing import TypeVar
-from typing import Union
 
 import pandas as pd
 import psycopg
@@ -57,9 +52,9 @@ class ServiceHub:
             print("Retrying connection in 60 seconds")
             self.schedule_job_delay(self._connect_pgdb, None, 60)
 
-    def insert_into_db(
+    def insert_into_db(  # type: ignore[no-any-unimported]
         self,
-        pixel_df: pd.DataFrame,  # type: ignore[no-any-unimported]
+        pixel_df: pd.DataFrame,
         pixel_meta_df: pd.DataFrame,
     ) -> None:
         self._pipeline.emit(dict(pixels=pixel_df, meta=pixel_meta_df))

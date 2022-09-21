@@ -19,8 +19,8 @@ watcher = WatchDog(storage_servicer)
 
 
 class epic_postprocessor(epic_post_servicer):  # type: ignore[misc,no-any-unimported]
-    def filter_and_save(
-        self,  # type: ignore[no-any-unimported]
+    def filter_and_save(  # type: ignore[no-any-unimported]
+        self,
         request: epic_image_pb2.epic_image,
         context: object,
     ) -> epic_image_pb2.empty:
@@ -32,8 +32,8 @@ class epic_postprocessor(epic_post_servicer):  # type: ignore[misc,no-any-unimpo
         print(img_cube.shape)
         return epic_image_pb2.empty()
 
-    def filter_and_save_chunk(
-        self,  # type: ignore[no-any-unimported]
+    def filter_and_save_chunk(  # type: ignore[no-any-unimported]
+        self,
         request_iterator: epic_image_pb2.epic_image,
         context: object,
     ) -> epic_image_pb2.empty:
