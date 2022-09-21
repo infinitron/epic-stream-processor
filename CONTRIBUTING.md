@@ -7,9 +7,10 @@ welcomes contributions in the form of bug reports, feature requests, and pull re
 Here is a list of important resources for contributors:
 
 - [Source Code]
-<!-- - [Documentation] -->
 - [Issue Tracker]
 - [Code of Conduct]
+<!-- - [Documentation] -->
+
 
 [mit license]: https://opensource.org/licenses/MIT
 [source code]: https://github.com/infinitron/epic-stream-processor
@@ -34,6 +35,10 @@ and/or steps to reproduce the issue.
 ## How to request a feature
 
 Request features on the [Issue Tracker].
+
+## How to contribute a feature
+
+Create an issue on the [Issue Tracker] describing the proposed changes. This will allow a chance to talk it over and validate your approach. Make a separate branch, please make sure it has a descriptive name that starts with either the fix/ or feature/ prefixes, for instance, ```fix/docs``` or ```feature/new_storage```. Follow the instructions [here](#how-to-submit-changes) to submit the changes.
 
 ## How to set up your development environment
 
@@ -89,13 +94,14 @@ and are written using the [pytest] testing framework.
 
 ## How to submit changes
 
-Open a [pull request] to submit changes to this project.
+Open a [pull request] to submit changes to this project. Make sure you have a descriptive commit message.
 
 Your pull request needs to meet the following guidelines for acceptance:
 
 - The Nox test suite must pass without errors and warnings.
 - Include unit tests. This project maintains 100% code coverage.
 - If your changes add functionality, update the documentation accordingly.
+- You have only one commit (if not, squash them into one commit).
 
 Feel free to submit early, though—we can always iterate on this.
 
@@ -104,9 +110,6 @@ To run linting and code formatting checks before committing your change, you can
 ```console
 $ nox --session=pre-commit -- install
 ```
-
-It is recommended to open an issue before starting work on anything.
-This will allow a chance to talk it over with the maintainers and validate your approach.
 
 [pull request]: https://github.com/infinitron/epic-stream-processor/pulls
 
