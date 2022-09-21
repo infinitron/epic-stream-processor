@@ -1,9 +1,11 @@
 # Epic Stream Processor
 
-[![License](https://img.shields.io/pypi/l/epic-stream-processor)][license]
+[![License](https://img.shields.io/badge/license-MIT-blue)][license]
 [![Tests](https://github.com/infinitron/epic-stream-processor/workflows/Tests/badge.svg)][tests]
 [![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)][pre-commit]
 [![Black](https://img.shields.io/badge/code%20style-black-000000.svg)][black]
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/release/python-380/)
+
 
 <!--[![Codecov](https://codecov.io/gh/infinitron/epic-stream-processor/branch/main/graph/badge.svg)][codecov]-->
 <!--[![Read the documentation at https://epic-stream-processor.readthedocs.io/](https://img.shields.io/readthedocs/epic-stream-processor/latest.svg?label=Read%20the%20Docs)][read the docs]-->
@@ -41,6 +43,14 @@ $ pip install epic-stream-processor
 
 <!-- Please see the [Command-line Reference] for details. -->
 - TODO
+
+## TODO
+- Add documentation
+- Add tests
+- Enable flake8
+- Enable actions
+- Update wiki
+
 
 ## Contributing
 
