@@ -1,7 +1,7 @@
 """Epic Stream Processor."""
 
-from epic_services import Client
-from epic_services import Server
+from epic_services import client
+from epic_services import server
 
 
-__all__ = ["Server", "Client"]
+__all__ = ["server", "client"]

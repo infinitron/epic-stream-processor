@@ -95,7 +95,3 @@ def serve(max_workers: int = 1) -> None:
     server.start()
     print(f"Running on {f'unix-abstract:{get_uds_id()}'}...")
     server.wait_for_termination()
-
-
-if __name__ == "__main__":
-    serve()
