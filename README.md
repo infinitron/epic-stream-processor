@@ -42,7 +42,28 @@ $ pip install epic-stream-processor
 ## Usage
 
 <!-- Please see the [Command-line Reference] for details. -->
-- TODO
+Creating a server instance
+```python
+from epic_stream_processor import server
+
+max_workers = 1
+server.serve(max_workers = max_workers)
+```
+
+Sending data to the server using a client
+```python
+from epic_stram_processor.client import EpicRPCClient
+
+rpc_client = EpicRPCClient()
+rpc_client.send_dummy_data()
+
+...
+hdrs = [...] #list of stringified headers
+data = np.ndarray([...]) # data 
+hdrs.append(d.shape)
+
+rpc_client.send_data()
+```
 
 ## TODO
 - Add documentation
@@ -82,4 +103,3 @@ This project was generated from [@cjolowicz]'s [Hypermodern Python Cookiecutter]
 [license]: https://github.com/infinitron/epic-stream-processor/blob/main/LICENSE
 [contributor guide]: https://github.com/infinitron/epic-stream-processor/blob/main/CONTRIBUTING.md
 [command-line reference]: https://epic-stream-processor.readthedocs.io/en/latest/usage.html
-````
