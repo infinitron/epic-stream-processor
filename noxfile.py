@@ -151,21 +151,21 @@ def mypy(session: Session) -> None:
     """Type-check using mypy."""
     args = session.posargs or ["src", "tests", "docs/conf.py"]
     session.install(".")
-    session.install("mypy", "pytest","sqlalchemy-stubs")
+    session.install("mypy", "pytest", "sqlalchemy-stubs")
     session.run("mypy", *args)
     if not session.posargs:
         session.run("mypy", f"--python-executable={sys.executable}", "noxfile.py")
 
 
-@session(python=['3.10','3.8'])
+@session(python=["3.10", "3.8"])
 def tests(session: Session) -> None:
     """Run the test suite."""
     session.install(".")
     session.install("coverage[toml]", "pytest", "pygments")
     try:
-        session.run("pip","install","pytest-grpc")
-        session.run("pip","install","pytest-pgsql")
-        session.run("coverage", "run", "--parallel", "-m", "pytest",  *session.posargs)
+        session.run("pip", "install", "pytest-grpc")
+        session.run("pip", "install", "pytest-pgsql")
+        session.run("coverage", "run", "--parallel", "-m", "pytest", *session.posargs)
     finally:
         if session.interactive:
             session.notify("coverage", posargs=[])

@@ -1,17 +1,17 @@
+from typing import Type
+
+from pytest_pgsql import PostgreSQLTestDB
+from sqlalchemy import create_engine
+
 from epic_stream_processor import client
+from epic_stream_processor.epic_grpc.epic_image_pb2_grpc import epic_post_processStub
 from epic_stream_processor.epic_services.server import epic_postprocessor
 from epic_stream_processor.epic_services.service_hub import ServiceHub
-from sqlalchemy import create_engine
-from pytest_pgsql import PostgreSQLTestDB 
-from epic_stream_processor.epic_grpc.epic_image_pb2_grpc import (
-    epic_post_processStub,
-)
-from typing import Type
 
 
 def test_send_dummy_data(
     grpc_stub: Type[epic_post_processStub],
-    postgresql_db: Type[PostgreSQLTestDB],    
+    postgresql_db: Type[PostgreSQLTestDB],
     grpc_servicer: epic_postprocessor,
 ) -> None:
     service_hub = ServiceHub(postgresql_db.engine)

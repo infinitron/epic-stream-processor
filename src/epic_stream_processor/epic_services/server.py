@@ -1,18 +1,20 @@
 import json
 import socket
 from concurrent import futures
-from typing import Iterator, Optional
+from typing import Iterator
+from typing import Optional
 
 import grpc
 import numpy as np
+from numpy.lib.stride_tricks import as_strided
+
 from ..epic_grpc import epic_image_pb2
-from ..epic_grpc.epic_image_pb2 import epic_image, empty
 from ..epic_grpc import epic_image_pb2_grpc
+from ..epic_grpc.epic_image_pb2 import empty
+from ..epic_grpc.epic_image_pb2 import epic_image
 from ..epic_grpc.epic_image_pb2_grpc import (
     epic_post_processServicer as epic_post_servicer,
 )
-from numpy.lib.stride_tricks import as_strided
-
 from .service_hub import ServiceHub
 from .watch_dog import WatchDog
 

@@ -66,7 +66,9 @@ $ poetry run epic-stream-processor
 [nox-poetry]: https://nox-poetry.readthedocs.io/
 
 ## How to add new message types
-Add service and message definitions to the ```epic_image.proto``` file and run the following command in the ```epic_grpc``` module folder
+
+Add service and message definitions to the `epic_image.proto` file and run the following command in the `epic_grpc` module folder
+
 ```bash
 $ python -m grpc_tools.protoc -I./ --python_out=. --mypy_out=. --mypy_grpc_out=. --grpc_python_out=. epic_image.proto
 ```

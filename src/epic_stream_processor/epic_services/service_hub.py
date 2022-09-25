@@ -2,11 +2,12 @@ from __future__ import annotations
 
 from datetime import datetime
 from datetime import timedelta
-from typing import Any, Optional
+from typing import Any
 from typing import Callable
 from typing import Dict
-from typing import TypeVar
+from typing import Optional
 from typing import Type
+from typing import TypeVar
 
 import pandas as pd
 import psycopg
@@ -28,7 +29,7 @@ class ServiceHub:
     _pipeline = Stream()
     # _pg_engine = create_engine("postgresql:///postgres?host=/var/run/postgresql")
 
-    def __init__(self, engine: Optional[Engine] = None) -> None:
+    def __init__(self, engine: Engine | None = None) -> None:
         """connect to ectd and and also have a scheduler from apscheduler"""
         self._scheduler = BackgroundScheduler(timezone=utc)
         self._scheduler.start()
@@ -45,7 +46,7 @@ class ServiceHub:
     #         cls.instance = super().__new__(cls)
     #     return cls.instance
 
-    def _connect_pgdb(self, engine: Optional[Engine] = None) -> None:
+    def _connect_pgdb(self, engine: Engine | None = None) -> None:
         # establish postgres connection
         # TODO: fetch the connection details from sys config service
 
@@ -61,7 +62,7 @@ class ServiceHub:
             print("Retrying connection in 60 seconds")
             self.schedule_job_delay(self._connect_pgdb, None, 60)
 
-    def insert_single_epoch_pgdb(  
+    def insert_single_epoch_pgdb(
         self,
         pixel_df: pd.DataFrame,
         pixel_meta_df: pd.DataFrame,
@@ -72,8 +73,8 @@ class ServiceHub:
     def detect_transient(upstream: object) -> object:
         return upstream
 
-    def insert_multi_epoch_pgdb(self,  
-        upstream: list[Dict[pd.DataFrame, pd.DataFrame]]
+    def insert_multi_epoch_pgdb(
+        self, upstream: list[dict[pd.DataFrame, pd.DataFrame]]
     ) -> None:
         pixels_df = []
         metadata_df = []

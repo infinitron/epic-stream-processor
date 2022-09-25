@@ -1,12 +1,14 @@
 import json
-from pathlib import Path
-from queue import Empty
 import socket
 import time
 from importlib.resources import path as res_path
-from typing import Iterator, Type
+from pathlib import Path
+from queue import Empty
+from typing import Iterator
 from typing import List
 from typing import Optional
+from typing import Type
+from typing import TypeVar
 
 import grpc
 from astropy.io import fits
@@ -14,11 +16,10 @@ from astropy.io import fits
 from .. import example_data
 from ..epic_grpc import epic_image_pb2
 from ..epic_grpc import epic_image_pb2_grpc
-from ..epic_grpc.epic_image_pb2 import epic_image, empty
+from ..epic_grpc.epic_image_pb2 import empty
+from ..epic_grpc.epic_image_pb2 import epic_image
 from ..epic_grpc.epic_image_pb2_grpc import epic_post_processStub
 from ..epic_types import NDArrayNum_t
-
-from typing import TypeVar
 
 
 _CHUNK_SIZE_ = int(819200)
@@ -100,11 +101,11 @@ class EpicRPCClient:
                 print("Unable to send data")
                 print(e)
 
-    def send_data(
-        self, header_arr: List[str], data: NDArrayNum_t
-    ) -> Optional[empty]:
+    def send_data(self, header_arr: List[str], data: NDArrayNum_t) -> Optional[empty]:
         try:
-            response: empty = self._stub.filter_and_save_chunk(self.chunk_data(header_arr, data))
+            response: empty = self._stub.filter_and_save_chunk(
+                self.chunk_data(header_arr, data)
+            )
 
             return response
         except Exception as e:

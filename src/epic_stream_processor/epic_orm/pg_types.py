@@ -1,8 +1,10 @@
-from typing import Union, Optional
-from typing import Callable
-from xml.etree.ElementTree import Element
-import sqlalchemy
 import xml.etree.ElementTree as etree
+from typing import Callable
+from typing import Optional
+from typing import Union
+from xml.etree.ElementTree import Element
+
+import sqlalchemy
 from sqlalchemy.types import TypeEngine
 
 
@@ -26,8 +28,8 @@ class XMLType(sqlalchemy.types.UserDefinedType):  # type: ignore [type-arg]
 
         return process
 
-    def result_processor( # type: ignore [no-untyped-def]
-        self, dialect, coltype: str 
+    def result_processor(  # type: ignore [no-untyped-def]
+        self, dialect, coltype: str
     ) -> Callable[..., Element]:
         def process(value: Union[str, bytes]) -> Element:
             if value is not None:

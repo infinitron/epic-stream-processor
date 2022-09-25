@@ -13,11 +13,11 @@ from uuid import uuid4
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
-from .._utils import PatchMan
-from .._utils import get_lmn_grid
 from astropy.io.fits import Header
 from astropy.wcs import WCS
 
+from .._utils import PatchMan
+from .._utils import get_lmn_grid
 from ..epic_types import Patch_t
 from ..epic_types import WatchMode_t
 from .service_hub import ServiceHub
@@ -31,7 +31,7 @@ class WatchDog:
     Monitors the locations of specified sources on EPIC images.
     """
 
-    def __init__(self, serviceHub: Optional[ServiceHub]=None):
+    def __init__(self, serviceHub: Optional[ServiceHub] = None):
         self._service_Hub: ServiceHub
         if serviceHub is not None:
             self._service_Hub = serviceHub
@@ -90,20 +90,18 @@ class WatchDog:
     ) -> None:
         raise NotImplementedError("Manual source watching is not Implemented yet")
 
-    def get_list(self) -> pd.DataFrame:  
+    def get_list(self) -> pd.DataFrame:
         return self._watch_df[["source_name", "skycoord", "patch_type"]]
 
-    def _flatten_series(  
-        self, series: pd.Series
-    ) -> List[T]:
+    def _flatten_series(self, series: pd.Series) -> List[T]:
         return list(chain.from_iterable(series))
 
-    def _remove_outside_sky_sources(  
+    def _remove_outside_sky_sources(
         self, df: pd.DataFrame, pos_column: str
     ) -> pd.DataFrame:
         return df[~(df[pos_column].apply(lambda x: np.isnan(x).any()))]
 
-    def _remove_outside_sky_patches(  
+    def _remove_outside_sky_patches(
         self,
         df: pd.DataFrame,
         src_column: str,
@@ -115,7 +113,7 @@ class WatchDog:
 
         return df[~(df[src_column].isin(outside_sources))]
 
-    def get_watch_indices(  
+    def get_watch_indices(
         self,
         header_str: str,
         img_axes: List[int] = [1, 2],
@@ -206,7 +204,7 @@ class WatchDog:
         )
 
     @staticmethod
-    def insert_lm_coords_df(  
+    def insert_lm_coords_df(
         df: pd.DataFrame,
         xsize: int,
         ysize: int,
@@ -222,7 +220,7 @@ class WatchDog:
         return df
 
     @staticmethod
-    def insert_pixels_df(  
+    def insert_pixels_df(
         df: pd.DataFrame,
         pixels: npt.NDArray[np.float64],
         pixel_idx_col: str = "patch_pixels",
@@ -234,7 +232,7 @@ class WatchDog:
         return df
 
     @staticmethod
-    def format_skypos_pg(  
+    def format_skypos_pg(
         df: pd.DataFrame,
         skypos_col: str = "patch_skypos",
         skypos_fmt_col: str = "pixel_skypos",
@@ -245,7 +243,7 @@ class WatchDog:
 
         return df
 
-    def filter_and_store_imgdata(  
+    def filter_and_store_imgdata(
         self,
         header: str,
         img_array: npt.NDArray[np.float64],
@@ -287,7 +285,7 @@ class WatchDog:
             ]
         ]
 
-        print(pixel_idx_df,pixel_meta_df)
+        print(pixel_idx_df, pixel_meta_df)
 
         self._service_Hub.insert_single_epoch_pgdb(pixel_idx_df, pixel_meta_df)
 

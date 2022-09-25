@@ -1,17 +1,28 @@
-from sqlalchemy import create_engine, func, select
-from sqlalchemy.orm import Session
-from sqlalchemy.engine import Engine
-from sqlalchemy import Column, Float, ARRAY, Text, TIMESTAMP, Integer, Sequence
-from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.ext.declarative import declarative_base
-from geoalchemy2 import Geometry
-from .pg_types import XMLType
 from typing import Optional
+
 import pandas as pd
+from geoalchemy2 import Geometry
+from sqlalchemy import ARRAY
+from sqlalchemy import TIMESTAMP
+from sqlalchemy import Column
+from sqlalchemy import Float
+from sqlalchemy import Integer
+from sqlalchemy import Sequence
+from sqlalchemy import Text
+from sqlalchemy import create_engine
+from sqlalchemy import func
+from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.engine import Engine
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import Session
+
+from .pg_types import XMLType
 
 
 _default_pg_conn_str = "postgresql:///postgres?host=/var/run/postgresql"
 Base = declarative_base()
+
 
 class EpicPixelsTable(Base):
     __tablename__ = "epic_pixels"
