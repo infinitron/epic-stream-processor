@@ -1,29 +1,46 @@
 import json
 import socket
 from concurrent import futures
+from typing import Iterator, Optional
 
 import grpc
 import numpy as np
-from epic_grpc import epic_image_pb2
-from epic_grpc import epic_image_pb2_grpc
-from epic_grpc.epic_image_pb2_grpc import (
+from ..epic_grpc import epic_image_pb2
+from ..epic_grpc.epic_image_pb2 import epic_image, empty
+from ..epic_grpc import epic_image_pb2_grpc
+from ..epic_grpc.epic_image_pb2_grpc import (
     epic_post_processServicer as epic_post_servicer,
 )
 from numpy.lib.stride_tricks import as_strided
+
 from .service_hub import ServiceHub
 from .watch_dog import WatchDog
 
 
-storage_servicer = ServiceHub()
-watcher = WatchDog(storage_servicer)
-
-
-class epic_postprocessor(epic_post_servicer):  # type: ignore[misc,no-any-unimported]
-    def filter_and_save(  # type: ignore[no-any-unimported]
+class epic_postprocessor(epic_post_servicer):
+    def __init__(
         self,
-        request: epic_image_pb2.epic_image,
+        storage_servicer: Optional[ServiceHub] = None,
+        use_default_servicer: bool = False,
+    ) -> None:
+        super().__init__()
+        self.storage_servicer = None
+        if storage_servicer is not None:
+            self.storage_servicer = storage_servicer
+
+        if use_default_servicer == True:
+            self.storage_servicer = ServiceHub()
+
+        self.watcher = WatchDog(self.storage_servicer)
+
+    def set_storage_servicer(self, servicer: ServiceHub) -> None:
+        self.watcher.change_storage_servicer(servicer=servicer)
+
+    def filter_and_save(
+        self,
+        request: epic_image,
         context: object,
-    ) -> epic_image_pb2.empty:
+    ) -> empty:
         # decode the header
         print(json.loads(request.header))
 
@@ -32,11 +49,11 @@ class epic_postprocessor(epic_post_servicer):  # type: ignore[misc,no-any-unimpo
         print(img_cube.shape)
         return epic_image_pb2.empty()
 
-    def filter_and_save_chunk(  # type: ignore[no-any-unimported]
+    def filter_and_save_chunk(
         self,
-        request_iterator: epic_image_pb2.epic_image,
+        request_iterator: Iterator[epic_image],
         context: object,
-    ) -> epic_image_pb2.empty:
+    ) -> empty:
         header = []
         img_buffer = bytes()
         for image in request_iterator:
@@ -66,13 +83,13 @@ class epic_postprocessor(epic_post_servicer):  # type: ignore[misc,no-any-unimpo
         # pixel_idx_df = watcher.format_skypos_pg(
         #     pixel_idx_df, 'patch_skypos', 'pixel_skypos')
 
-        pixel_idx_df, pixel_meta_df = watcher.filter_and_store_imgdata(
+        pixel_idx_df, pixel_meta_df = self.watcher.filter_and_store_imgdata(
             header[1], img_array, epic_version="0.0.2"
         )
 
         # print()
         print(img_array.shape, pixel_idx_df.columns, pixel_meta_df.columns)
-        return epic_image_pb2.empty()
+        return empty()
 
 
 def get_uds_id() -> str:
@@ -88,7 +105,7 @@ def serve(max_workers: int = 1) -> None:
     )
     print("Setting up")
     epic_image_pb2_grpc.add_epic_post_processServicer_to_server(
-        epic_postprocessor(), server
+        epic_postprocessor(use_default_servicer=True), server
     )
     server.add_insecure_port(f"unix-abstract:{get_uds_id()}")
     print("Starting")
