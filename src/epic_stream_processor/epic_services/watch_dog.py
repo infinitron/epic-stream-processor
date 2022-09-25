@@ -1,6 +1,7 @@
 from datetime import datetime
 from datetime import timedelta
 from itertools import chain
+from optparse import Option
 from typing import Any
 from typing import Dict
 from typing import List
@@ -12,11 +13,11 @@ from uuid import uuid4
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
-from _utils import PatchMan
-from _utils import get_lmn_grid
 from astropy.io.fits import Header
 from astropy.wcs import WCS
 
+from .._utils import PatchMan
+from .._utils import get_lmn_grid
 from ..epic_types import Patch_t
 from ..epic_types import WatchMode_t
 from .service_hub import ServiceHub
@@ -30,8 +31,10 @@ class WatchDog:
     Monitors the locations of specified sources on EPIC images.
     """
 
-    def __init__(self, serviceHub: ServiceHub):
-        self._service_Hub = serviceHub
+    def __init__(self, serviceHub: Optional[ServiceHub] = None):
+        self._service_Hub: ServiceHub
+        if serviceHub is not None:
+            self._service_Hub = serviceHub
         self._watch_df = pd.DataFrame(
             columns=["id", "source_name", "ra", "dec", "patch_type"]
         )
@@ -87,20 +90,18 @@ class WatchDog:
     ) -> None:
         raise NotImplementedError("Manual source watching is not Implemented yet")
 
-    def get_list(self) -> pd.DataFrame:  # type: ignore[no-any-unimported]
+    def get_list(self) -> pd.DataFrame:
         return self._watch_df[["source_name", "skycoord", "patch_type"]]
 
-    def _flatten_series(  # type: ignore[no-any-unimported]
-        self, series: pd.Series[T]
-    ) -> List[T]:
+    def _flatten_series(self, series: pd.Series) -> List[T]:
         return list(chain.from_iterable(series))
 
-    def _remove_outside_sky_sources(  # type: ignore[no-any-unimported]
+    def _remove_outside_sky_sources(
         self, df: pd.DataFrame, pos_column: str
     ) -> pd.DataFrame:
         return df[~(df[pos_column].apply(lambda x: np.isnan(x).any()))]
 
-    def _remove_outside_sky_patches(  # type: ignore[no-any-unimported]
+    def _remove_outside_sky_patches(
         self,
         df: pd.DataFrame,
         src_column: str,
@@ -112,7 +113,7 @@ class WatchDog:
 
         return df[~(df[src_column].isin(outside_sources))]
 
-    def get_watch_indices(  # type: ignore[no-any-unimported]
+    def get_watch_indices(
         self,
         header_str: str,
         img_axes: List[int] = [1, 2],
@@ -203,7 +204,7 @@ class WatchDog:
         )
 
     @staticmethod
-    def insert_lm_coords_df(  # type: ignore[no-any-unimported]
+    def insert_lm_coords_df(
         df: pd.DataFrame,
         xsize: int,
         ysize: int,
@@ -219,7 +220,7 @@ class WatchDog:
         return df
 
     @staticmethod
-    def insert_pixels_df(  # type: ignore[no-any-unimported]
+    def insert_pixels_df(
         df: pd.DataFrame,
         pixels: npt.NDArray[np.float64],
         pixel_idx_col: str = "patch_pixels",
@@ -231,7 +232,7 @@ class WatchDog:
         return df
 
     @staticmethod
-    def format_skypos_pg(  # type: ignore[no-any-unimported]
+    def format_skypos_pg(
         df: pd.DataFrame,
         skypos_col: str = "patch_skypos",
         skypos_fmt_col: str = "pixel_skypos",
@@ -242,7 +243,7 @@ class WatchDog:
 
         return df
 
-    def filter_and_store_imgdata(  # type: ignore[no-any-unimported]
+    def filter_and_store_imgdata(
         self,
         header: str,
         img_array: npt.NDArray[np.float64],
@@ -284,7 +285,9 @@ class WatchDog:
             ]
         ]
 
-        self._service_Hub.insert_into_db(pixel_idx_df, pixel_meta_df)
+        print(pixel_idx_df, pixel_meta_df)
+
+        self._service_Hub.insert_single_epoch_pgdb(pixel_idx_df, pixel_meta_df)
 
         return pixel_idx_df, pixel_meta_df
 
@@ -292,9 +295,10 @@ class WatchDog:
         self._watch_df.drop(
             (self._watch_df[self._watch_df["id"] == id]).index, inplace=True
         )
-        self._service_Hub.pg_query(
-            "UPDATE epic_watchdog SET watch_status=%s", tuple("watched")
-        )
+        self._service_Hub._pgdb.set_src_watched(self._watch_df["id"])
+        # .pg_query(
+        #     "UPDATE epic_watchdog SET watch_status=%s", tuple("watched")
+        # )
 
     def _add_watch_timer(self, id: str, date_watch: datetime) -> None:
         self._service_Hub.schedule_job_date(
@@ -307,25 +311,30 @@ class WatchDog:
                 "Sources are already being watched and overwrite is \
                     set to false"
             )
-        else:
-            for source in self._watch_df:
-                source["job"].remove()
 
-        sources = self._service_Hub.pg_query(
-            "SELECT id,source,ST_X(skypos),ST_Y(skypos),t_end, watch_mode,\
-                 patch_type from \
-                 epic_watchdog where watch_status=%s",
-            tuple("watching"),
-        )
+        self._watch_df = self._service_Hub._pgdb.list_watch_sources()
+        # else:
+        #     for source in self._watch_df:
+        #         source["job"].remove()
 
-        self._watch_df = self._watch_df.head(0)
-        for source in sources:
-            self.watch_source(
-                id=source[0],
-                name=source[1],
-                ra=source[2],
-                dec=source[3],
-                watch_until=source[4],
-                watch_mode=source[5],
-                patch_type=source[6],
-            )
+        # sources = self._service_Hub.pg_query(
+        #     "SELECT id,source,ST_X(skypos),ST_Y(skypos),t_end, watch_mode,\
+        #          patch_type from \
+        #          epic_watchdog where watch_status=%s",
+        #     tuple("watching"),
+        # )
+
+        # self._watch_df = self._watch_df.head(0)
+        # for source in sources:
+        #     self.watch_source(
+        #         id=source[0],
+        #         name=source[1],
+        #         ra=source[2],
+        #         dec=source[3],
+        #         watch_until=source[4],
+        #         watch_mode=source[5],
+        #         patch_type=source[6],
+        #     )
+
+    def change_storage_servicer(self, servicer: ServiceHub) -> None:
+        self._service_Hub = servicer
