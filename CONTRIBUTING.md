@@ -11,7 +11,6 @@ Here is a list of important resources for contributors:
 - [Code of Conduct]
 <!-- - [Documentation] -->
 
-
 [mit license]: https://opensource.org/licenses/MIT
 [source code]: https://github.com/infinitron/epic-stream-processor
 [documentation]: https://epic-stream-processor.readthedocs.io/
@@ -38,7 +37,7 @@ Request features on the [Issue Tracker].
 
 ## How to contribute a feature
 
-Create an issue on the [Issue Tracker] describing the proposed changes. This will allow a chance to talk it over and validate your approach. Make a separate branch, please make sure it has a descriptive name that starts with either the fix/ or feature/ prefixes, for instance, ```fix/docs``` or ```feature/new_storage```. Follow the instructions [here](#how-to-submit-changes) to submit the changes.
+Create an issue on the [Issue Tracker] describing the proposed changes. This will allow a chance to talk it over and validate your approach. Make a separate branch, please make sure it has a descriptive name that starts with either the fix/ or feature/ prefixes, for instance, `fix/docs` or `feature/new_storage`. Follow the instructions [here](#how-to-submit-changes) to submit the changes.
 
 ## How to set up your development environment
 
@@ -65,6 +64,12 @@ $ poetry run epic-stream-processor
 [poetry]: https://python-poetry.org/
 [nox]: https://nox.thea.codes/
 [nox-poetry]: https://nox-poetry.readthedocs.io/
+
+## How to add new message types
+Add service and message definitions to the ```epic_image.proto``` file and run the following command in the ```epic_grpc``` module folder
+```bash
+$ python -m grpc_tools.protoc -I./ --python_out=. --mypy_out=. --mypy_grpc_out=. --grpc_python_out=. epic_image.proto
+```
 
 ## How to test the project
 
