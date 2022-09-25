@@ -6,7 +6,6 @@
 [![Black](https://img.shields.io/badge/code%20style-black-000000.svg)][black]
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/release/python-380/)
 
-
 <!--[![Codecov](https://codecov.io/gh/infinitron/epic-stream-processor/branch/main/graph/badge.svg)][codecov]-->
 <!--[![Read the documentation at https://epic-stream-processor.readthedocs.io/](https://img.shields.io/readthedocs/epic-stream-processor/latest.svg?label=Read%20the%20Docs)][read the docs]-->
 <!--[![PyPI](https://img.shields.io/pypi/v/epic-stream-processor.svg)][pypi_]
@@ -59,7 +58,7 @@ rpc_client.send_dummy_data()
 
 ...
 hdrs = [...] #list of stringified headers
-data = np.ndarray([...]) # data 
+data = np.ndarray([...]) # data
 hdrs.append(d.shape)
 
 rpc_client.send_data()
@@ -103,3 +102,4 @@ This project was generated from [@cjolowicz]'s [Hypermodern Python Cookiecutter]
 [license]: https://github.com/infinitron/epic-stream-processor/blob/main/LICENSE
 [contributor guide]: https://github.com/infinitron/epic-stream-processor/blob/main/CONTRIBUTING.md
 [command-line reference]: https://epic-stream-processor.readthedocs.io/en/latest/usage.html
+````
