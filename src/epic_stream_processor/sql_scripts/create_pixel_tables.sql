@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS epic_pixels (
 	pixel_values FLOAT [] NOT NULL,
 	pixel_coord POINT NOT NULL,
 	pixel_lm POINT,
-	source_names TEXT [] NOT NULL
+	source_names TEXT NOT NULL
 );
 
 SELECT

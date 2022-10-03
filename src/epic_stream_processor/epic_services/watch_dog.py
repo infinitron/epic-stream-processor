@@ -1,13 +1,14 @@
 from datetime import datetime
 from datetime import timedelta
 from itertools import chain
-from optparse import Option
+from timeit import default_timer as timer
 from typing import Any
 from typing import Dict
 from typing import List
 from typing import Optional
 from typing import Tuple
 from typing import TypeVar
+from typing import Union
 from uuid import uuid4
 
 import numpy as np
@@ -16,8 +17,12 @@ import pandas as pd
 from astropy.io.fits import Header
 from astropy.wcs import WCS
 
+from .._utils import DynSources
 from .._utils import PatchMan
 from .._utils import get_lmn_grid
+from ..epic_types import NDArrayBool_t
+from ..epic_types import NDArrayNum_t
+from ..epic_types import NDArrayStr_t
 from ..epic_types import Patch_t
 from ..epic_types import WatchMode_t
 from .service_hub import ServiceHub
@@ -43,15 +48,30 @@ class WatchDog:
                 self._watch_df,
                 pd.DataFrame(
                     dict(
-                        id=[1, 2],
-                        source_name=["center", "c2"],
-                        ra=[130.551, 234.1],
-                        dec=[34.348, 34.348],
-                        patch_type=["3x3", "3x3"],
+                        id=[1, 2, 3, 4, 5],
+                        source_name=["jupyter", "c2", "sun", "Cyg A", "Cyg X-1"],
+                        ra=[130.551, 234.1, 0.0, 299.86815191, 299.59031556],
+                        dec=[34.348, 34.348, 0.0, 40.73391574, 35.20160681],
+                        patch_type=["3x3", "3x3", "5x5", "3x3", "3x3"],
                     )
                 ),
             ]
         )
+
+        # self._watch_df = pd.concat(
+        #     [
+        #         #self._watch_df,
+        #         pd.DataFrame(
+        #             dict(
+        #                 id=[1],
+        #                 source_name=["sun"],
+        #                 ra=[130.551],
+        #                 dec=[34.348],
+        #                 patch_type=["3x3"],
+        #             )
+        #         ),
+        #     ]
+        # )
         print("DF", self._watch_df)
 
     def watch_source(
@@ -113,6 +133,44 @@ class WatchDog:
 
         return df[~(df[src_column].isin(outside_sources))]
 
+    def _get_dyn_skypos(
+        self, src_name: str, t_obs_str: str, ra: float, dec: float
+    ) -> List[float]:
+        dyn_fun = f"get_skypos_{src_name}"
+        # if hasattr(DynSources, dyn_fun):
+        #     ra_dec: List[float] = getattr(DynSources, dyn_fun).__call__(t_obs_str)
+        #     return ra_dec
+        # else:
+        #     return [ra, dec]
+        try:
+            ra_dec: List[float] = getattr(DynSources, dyn_fun).__call__(t_obs_str)
+            return ra_dec
+        except Exception:
+            return [ra, dec]
+
+    def _update_src_skypos(
+        self,
+        source_list: pd.DataFrame,
+        t_obs_str: str,
+        ra_col: str = "ra",
+        dec_col: str = "dec",
+    ) -> pd.DataFrame:
+        # return source_list
+
+        # print("IN UPD", source_list)
+
+        source_list[[ra_col, dec_col]] = source_list.apply(
+            lambda row: pd.Series(
+                self._get_dyn_skypos(
+                    row["source_name"], t_obs_str, row["ra"], row["dec"]
+                ),
+                index=[ra_col, dec_col],
+            ),
+            axis=1,
+        )
+
+        return source_list
+
     def get_watch_indices(
         self,
         header_str: str,
@@ -123,8 +181,16 @@ class WatchDog:
         sources = self._watch_df["source_name"]
         patch_types = self._watch_df["patch_type"]
 
+        t_obs = header["DATETIME"]
+
+        # for souces with changing ra and dec like the Sun
+        start = timer()
+        src_pos = self._update_src_skypos(self._watch_df, t_obs)
+        print(f"Elapsed UPD: {timer()-start} s")
+        # print("UPD", src_pos)
+
         # drop any sources outside the sky
-        pixels = wcs.all_world2pix(self._watch_df[["ra", "dec"]].to_numpy(), 1)
+        pixels = wcs.all_world2pix(src_pos[["ra", "dec"]].to_numpy(), 1)
 
         source_pixel_df = pd.DataFrame.from_dict(
             dict(pixel=pixels.tolist(), source=sources, patch_type=patch_types)
@@ -227,7 +293,7 @@ class WatchDog:
         val_col: str = "pixel_values",
     ) -> pd.DataFrame:
         df[val_col] = df[pixel_idx_col].apply(
-            lambda x: pixels[:, :, :, x[1], x[0]].ravel().tolist()
+            lambda x: pixels[:, :, :, x[1] - 1, x[0] - 1].ravel().tolist()
         )
         return df
 
@@ -248,19 +314,17 @@ class WatchDog:
         header: str,
         img_array: npt.NDArray[np.float64],
         epic_version: str = "0.0.2",
-    ) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    ) -> None:  # Tuple[pd.DataFrame, pd.DataFrame]:
+
+        start = timer()
         pixel_idx_df = self.get_watch_indices(header)
+        print(f"Elapsed2a: {timer()-start}")
+        start = timer()
         pixel_meta_df = pd.DataFrame.from_dict(
             self.header_to_metadict(header, epic_version=epic_version)
         )
+        print(f"Elapsed2b: {timer()-start}")
         pixel_idx_df["id"] = pixel_meta_df.iloc[0]["id"]
-
-        pixel_idx_df = self.insert_pixels_df(
-            pixel_idx_df,
-            img_array,
-            pixel_idx_col="patch_pixels",
-            val_col="pixel_values",
-        )
 
         pixel_idx_df = self.format_skypos_pg(
             pixel_idx_df, "patch_skypos", "pixel_skypos"
@@ -274,22 +338,42 @@ class WatchDog:
 
         pixel_idx_df["pixel_coord"] = pixel_idx_df["patch_pixels"].astype(str)
         pixel_idx_df["source_names"] = pixel_idx_df["patch_name"]
-        pixel_idx_df = pixel_idx_df[
-            [
-                "id",
-                "pixel_values",
-                "pixel_coord",
-                "pixel_skypos",
-                "source_names",
-                "pixel_lm",
-            ]
-        ]
 
-        print(pixel_idx_df, pixel_meta_df)
+        pixel_idx_df = self.insert_pixels_df(
+            pixel_idx_df,
+            img_array,
+            pixel_idx_col="patch_pixels",
+            val_col="pixel_values",
+        )
 
-        self._service_Hub.insert_single_epoch_pgdb(pixel_idx_df, pixel_meta_df)
+        # pixel_idx_df = pixel_idx_df[
+        #     [
+        #         "id",
+        #         "pixel_values",
+        #         "pixel_coord",
+        #         "pixel_skypos",
+        #         "source_names",
+        #         "pixel_lm",
+        #     ]
+        # ]
 
-        return pixel_idx_df, pixel_meta_df
+        # print(pixel_idx_df, pixel_meta_df)
+
+        self._service_Hub.insert_single_epoch_pgdb(
+            pixel_idx_df[
+                [
+                    "id",
+                    "pixel_values",
+                    "pixel_coord",
+                    "pixel_skypos",
+                    "source_names",
+                    "pixel_lm",
+                ]
+            ],
+            pixel_meta_df,
+        )
+
+        # return 0,0#pixel_idx_df, pixel_meta_df
 
     def _remove_source(self, id: str) -> None:
         self._watch_df.drop(
@@ -338,3 +422,236 @@ class WatchDog:
 
     def change_storage_servicer(self, servicer: ServiceHub) -> None:
         self._service_Hub = servicer
+
+
+class EpicPixels:
+    def __init__(
+        self,
+        img_hdr: str,
+        primary_hdr: str,
+        img_array: NDArrayNum_t,
+        watch_df: pd.DataFrame,
+        epic_ver: str = "0.0.1",
+        img_axes: List[int] = [1, 2],
+        elevation_limit: float = 0.0,
+    ) -> None:
+        self.img_array = img_array
+        # self.header_str = header
+        self.epic_ver = epic_ver
+
+        self._watch_df = watch_df
+        self.img_hdr = Header.fromstring(img_hdr)
+        self.primary_hdr = Header.fromstring(primary_hdr)
+
+        self.ra0 = self.img_hdr["CRVAL1"]
+        self.dec0 = self.img_hdr["CRVAL2"]
+
+        self.x0 = self.img_hdr["CRPIX1"]
+        self.y0 = self.img_hdr["CRPIX2"]
+
+        self.dx = self.img_hdr["CDELT1"]
+        self.dy = self.img_hdr["CDELT2"]
+
+        self.delta_min = elevation_limit
+
+        self.xdim = self.primary_hdr["GRIDDIMX"]
+        self.ydim = self.primary_hdr["GRIDDIMY"]
+
+        self.dgridx = self.primary_hdr["DGRIDX"]
+        self.dgrixy = self.primary_hdr["DGRIDY"]
+
+        self.t_obs = self.img_hdr["DATETIME"]
+
+        self.max_rad = self.xdim * self.dgridx * np.cos(np.deg2rad(elevation_limit))
+
+    def ra2x(self, ra: Union[float, NDArrayNum_t]) -> Union[float, NDArrayNum_t]:
+        """Return the X-pixel (0-based index) number given an RA"""
+        pix = (ra - self.ra0) / self.dx + self.x0
+        return self.nearest_pix(pix) - 1
+
+    def nearest_pix(
+        self, pix: Union[float, NDArrayNum_t]
+    ) -> Union[float, NDArrayNum_t]:
+        frac_dist = np.minimum(np.modf(pix)[0], 0.5)
+        nearest_pix: Union[float, NDArrayNum_t] = np.floor(pix + frac_dist)
+        return nearest_pix
+
+    def dec2y(self, dec: Union[float, NDArrayNum_t]) -> Union[float, NDArrayNum_t]:
+        """Return the Y-pixel (0-based index) number given a DEC"""
+        pix = (dec - self.dec0) / self.dy + self.y0
+        return self.nearest_pix(pix) - 1
+
+    def is_skycoord_fov(
+        self,
+        ra: Union[float, NDArrayNum_t, pd.Series],
+        dec: Union[float, NDArrayNum_t, pd.Series],
+    ) -> NDArrayBool_t:
+        """Return a bool index indicating whether the
+        specified sky coordinates lie inside the fov
+        """
+        is_fov: NDArrayBool_t = np.less_equal(
+            np.linalg.norm(
+                np.vstack(
+                    [self.ra2x(ra) - self.xdim / 2, self.dec2y(dec) - self.ydim / 2]
+                ),
+                axis=0,
+            ),
+            self.max_rad,
+        )
+        return is_fov
+
+    def is_pix_fov(
+        self,
+        x: Union[float, NDArrayNum_t, pd.Series],
+        y: Union[float, NDArrayNum_t, pd.Series],
+    ) -> NDArrayBool_t:
+        """Return a bool index indicating whether the
+        specified pixel coordinates lie inside the fov
+        """
+        # print(np.vstack([x - self.xdim/2,y - self.ydim/2]))
+        # print(np.linalg.norm(np.vstack([x - self.xdim/2,y - self.ydim/2]),axis=0))
+        is_fov: NDArrayBool_t = np.less_equal(
+            np.linalg.norm(np.vstack([x - self.xdim / 2, y - self.ydim / 2]), axis=0),
+            self.max_rad,
+        )
+        return is_fov
+
+    def header_to_metadict(self) -> Dict[str, Any]:
+        ihdr = self.img_hdr
+        return dict(
+            id=[str(uuid4())],
+            img_time=[datetime.strptime(ihdr["DATETIME"], "%Y-%m-%dT%H:%M:%S.%f")],
+            n_chan=[int(ihdr["NAXIS3"])],
+            n_pol=[int(ihdr["NAXIS4"])],
+            chan0=[ihdr["CRVAL3"] - ihdr["CDELT3"] * ihdr["CRPIX3"]],
+            chan_bw=[ihdr["CDELT3"]],
+            epic_version=[self.epic_ver],
+            img_size=[str((ihdr["NAXIS1"], ihdr["NAXIS2"]))],
+        )
+
+    def store_pg(self, sHub: ServiceHub) -> None:
+        sHub.insert_single_epoch_pgdb(self.pixel_idx_df, self.pixel_meta_df)
+
+    def gen_pixdata_dfs(
+        self,
+    ) -> pd.DataFrame:
+        self.idx_l = self._watch_df.index.to_numpy()
+        self.src_l = self._watch_df["source_name"].to_numpy().astype(str)
+        self.ra_l = self._watch_df["ra"].to_numpy()
+        self.dec_l = self._watch_df["dec"].to_numpy()
+        self.patch_size_l = (
+            self._watch_df["patch_type"].str.split("x").str[0].astype(float).to_numpy()
+        )
+        self.patch_npix_l = self.patch_size_l**2
+
+        # for souces with changing ra and dec like the Sun
+        # start = timer()
+        self._update_src_skypos(self.t_obs)
+        # print(f'Elapsed UPD: {timer()-start} s',self._watch_df.shape)
+
+        # drop any sources outside the sky
+        self.x_l = self.ra2x(self.ra_l)
+        self.y_l = self.dec2y(self.dec_l)
+        self.in_fov = self.is_pix_fov(self.x_l, self.y_l)
+
+        # filter the indices or sources outside the sky
+        self.watch_l = np.vstack(
+            [
+                self.idx_l,
+                self.ra_l,
+                self.dec_l,
+                self.x_l,
+                self.y_l,
+                self.in_fov,
+                self.patch_size_l,
+            ]
+        )
+        self.watch_l = self.watch_l[:, self.in_fov]
+
+        xpatch_pix_idx, ypatch_pix_idx = np.hstack(
+            list(map(PatchMan.get_patch_idx, self.watch_l[-1, :]))
+        )
+
+        self.watch_l = np.repeat(
+            self.watch_l, self.watch_l[-1, :].astype(int) ** 2, axis=1
+        )
+
+        # update the pixel indices and remove sources if they cross the fov
+        self.watch_l[3, :] += xpatch_pix_idx
+        self.watch_l[4, :] += ypatch_pix_idx
+
+        self.watch_l[-2, :] = self.is_pix_fov(self.watch_l[3, :], self.watch_l[4, :])
+
+        # test fov crossing
+        groups = np.split(
+            self.watch_l[-2, :], np.unique(self.watch_l[0, :], return_index=True)[1][1:]
+        )
+
+        is_out_fov = [
+            i if np.all(i == True) else np.logical_and(i, False) for i in groups
+        ]
+
+        # filter patches crossing fov
+        self.watch_l = self.watch_l[:, np.concatenate(is_out_fov).astype(bool).ravel()]
+
+        # update the ra, dec
+        self.watch_l[1, :] += xpatch_pix_idx * self.dx
+        self.watch_l[2, :] += ypatch_pix_idx * self.dy
+
+        # extract the pixel values for each pixel
+        # img_array indices [complex, npol, nchan, y, x]
+        pix_values = self.img_array[
+            :, :, :, self.watch_l[4, :].astype(int), self.watch_l[3, :].astype(int)
+        ]
+        pix_values_l = [
+            pix_values[:, :, :, i].ravel().tolist() for i in range(pix_values.shape[-1])
+        ]
+
+        skypos_pg_fmt = [
+            f"SRID=4326;POINT({i} {j})"
+            for i, j in zip(self.watch_l[1, :], self.watch_l[2, :])
+        ]
+
+        # grab lm coords
+        lmn_grid = get_lmn_grid(self.xdim, self.ydim)
+        l_vals = lmn_grid[
+            0, self.watch_l[3, :].astype(int), self.watch_l[4, :].astype(int)
+        ]
+        m_vals = lmn_grid[
+            1, self.watch_l[3, :].astype(int), self.watch_l[4, :].astype(int)
+        ]
+
+        lm_coord_fmt = [f"({i},{j})" for i, j in zip(l_vals, m_vals)]
+        pix_coord_fmt = [
+            f"({i},{j})"
+            for i, j in zip(
+                self.watch_l[3, :].astype(int), self.watch_l[4, :].astype(int)
+            )
+        ]
+        # skycoord_fmt = [f"[{i},{j}]" for i,j in zip(self.watch_l[1,:].astype(int),self.watch_l[2,:].astype(int))]
+        source_names = self.src_l[self.watch_l[0, :].astype(int)]
+
+        self.pixel_meta_df = pd.DataFrame.from_dict(self.header_to_metadict())
+
+        self.pixel_idx_df = pd.DataFrame.from_dict(
+            dict(
+                id=[self.pixel_meta_df.iloc[0]["id"] for i in range(len(l_vals))],
+                pixel_values=pix_values_l,
+                pixel_coord=pix_coord_fmt,
+                pixel_skypos=skypos_pg_fmt,
+                source_names=source_names,
+                pixel_lm=lm_coord_fmt,
+            )
+        )
+
+    def _update_src_skypos(
+        self,
+        # source_list: pd.DataFrame,
+        t_obs_str: str,
+    ) -> None:
+
+        for i, src in enumerate(self.src_l):
+            if src in DynSources.bodies:
+                self.ra_l[i], self.dec_l[i] = DynSources.get_lwasv_skypos(
+                    src, t_obs_str
+                )

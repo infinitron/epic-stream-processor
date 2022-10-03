@@ -42,27 +42,30 @@ $ pip install epic-stream-processor
 
 <!-- Please see the [Command-line Reference] for details. -->
 Creating a server instance
-```python
-from epic_stream_processor import server
+<pre>
+<del>from epic_stream_processor import server
 
 max_workers = 1
-server.serve(max_workers = max_workers)
-```
+server.serve(max_workers = max_workers)</del>
+from epic_stream_processor.epic_services import ThreadedServer
+
+ThreadedServer.listen()
+</pre>
 
 Sending data to the server using a client
-```python
-from epic_stram_processor.client import EpicRPCClient
+<pre>
+<del>from epic_stram_processor.client import EpicRPCClient
 
 rpc_client = EpicRPCClient()
-rpc_client.send_dummy_data()
+rpc_client.send_dummy_data()</del>
+import json
+from epic_stream_processor.epic_services import stream_packed_uds
+from epic_stream_processor._utils.Utils import get_thread_UDS_addr
 
 ...
-hdrs = [...] #list of stringified headers
-data = np.ndarray([...]) # data
-hdrs.append(d.shape)
 
-rpc_client.send_data()
-```
+stream_data_uds(primary_hdr, img_hdr, data)
+</pre>
 
 ## TODO
 - Add documentation

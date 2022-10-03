@@ -1,9 +1,15 @@
+import socket
 from functools import lru_cache
 from typing import List
 from typing import Optional
 from typing import Tuple
 
+import astropy.units as u
 import numpy as np
+from astropy.coordinates import EarthLocation
+from astropy.coordinates import get_body
+from astropy.coordinates import solar_system_ephemeris
+from astropy.time import Time
 from numpy.typing import NDArray
 
 from ..epic_types import NDArrayNum_t
@@ -23,6 +29,16 @@ class PatchMan:
         )
 
     @staticmethod
+    @lru_cache(maxsize=None)
+    def get_patch_idx(patch_size: int = 3) -> NDArrayNum_t:
+        x, y = np.meshgrid(
+            np.arange(patch_size) - int(patch_size / 2),
+            np.arange(patch_size) - int(patch_size / 2),
+        )
+        return np.vstack([x.ravel(), y.ravel()])
+
+    @staticmethod
+    @lru_cache(maxsize=None)
     def get_patch_size(patch_type: Patch_t = "3x3") -> int:
         return int(str(patch_type).split("x")[0])
 
@@ -54,3 +70,38 @@ def get_lmn_grid(xsize: int, ysize: int) -> NDArrayNum_t:
     lm_matrix = np.asarray([i * l_step - 1.0, j * m_step - 1.0, np.zeros_like(j)])
 
     return lm_matrix
+
+
+class DynSources:
+
+    lwasv_loc = EarthLocation(lat=-34.348333 * u.deg, lon=-105.114422 * u.deg)
+    bodies = solar_system_ephemeris.bodies
+
+    @staticmethod
+    def get_lwasv_skypos(body: str, t_obs_str: str) -> List[float]:
+        time = Time(t_obs_str, format="isot", scale="utc")
+
+        loc = get_body(body, time, DynSources.lwasv_loc)
+        return [loc.ra.degree, loc.dec.degree]
+
+
+# for body in solar_system_ephemeris.bodies:
+#     get_skypos_func = partial(DynSources._get_lwasv_skypos, body)
+#     setattr(
+#         DynSources,
+#         f"get_skypos_{body}",
+#         staticmethod(get_skypos_func),
+#     )
+
+
+def get_epic_stpro_uds_id() -> str:
+    """
+    Query the central registry to get the UDS ID
+    """
+    # querying logic
+    # return "localhost:8005"
+    return f"unix-abstract:{socket.gethostname()}_epic_processor"
+
+
+def get_thread_UDS_addr() -> str:
+    return f"\0{socket.gethostname()}_epic_processor"

@@ -6,8 +6,8 @@ from typing import Any
 from typing import Callable
 from typing import Dict
 from typing import Optional
-from typing import Type
 from typing import TypeVar
+from typing import Union
 
 import pandas as pd
 import psycopg
@@ -26,25 +26,26 @@ T = TypeVar("T")
 
 class ServiceHub:
     # _pg_conn = None
-    _pipeline = Stream()
     # _pg_engine = create_engine("postgresql:///postgres?host=/var/run/postgresql")
 
     def __init__(self, engine: Engine | None = None) -> None:
         """connect to ectd and and also have a scheduler from apscheduler"""
         self._scheduler = BackgroundScheduler(timezone=utc)
+        self._pipeline = Stream(stream_name="service_hub")
         self._scheduler.start()
         self._pgdb: Database
         self._connect_pgdb(engine)
 
         # define the stream processor timed_window(5)
-        self._pipeline.map(ServiceHub.detect_transient).timed_window(0).sink(
+        # IMPORTANT: If using a timed window, never set the window to 0!
+        self._pipeline.map(ServiceHub.detect_transient).timed_window(5).sink(
             self.insert_multi_epoch_pgdb
         )
 
-    # def __new__(cls) -> ServiceHub:
-    #     if not hasattr(cls, "instance"):
-    #         cls.instance = super().__new__(cls)
-    #     return cls.instance
+    def __new__(cls) -> ServiceHub:
+        if not hasattr(cls, "instance"):
+            cls.instance = super().__new__(cls)
+        return cls.instance
 
     def _connect_pgdb(self, engine: Engine | None = None) -> None:
         # establish postgres connection
@@ -74,18 +75,24 @@ class ServiceHub:
         return upstream
 
     def insert_multi_epoch_pgdb(
-        self, upstream: list[dict[pd.DataFrame, pd.DataFrame]]
+        self,
+        upstream: (
+            list[dict[pd.DataFrame, pd.DataFrame]] | dict[pd.DataFrame, pd.DataFrame]
+        ),
     ) -> None:
         pixels_df = []
         metadata_df = []
+
+        if type(upstream) == dict:
+            upstream = [upstream]
 
         if len(upstream) < 1:
             return
 
         for i in upstream:
-            print("inloop")
-            print(i)
-            print("after p")
+            # print("inloop")
+            # print(i)
+            # print("after p")
             pixels_df.append(i["pixels"])
             metadata_df.append(i["meta"])
 

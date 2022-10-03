@@ -94,7 +94,7 @@ class Database:
         stmnt = select(
             [
                 watch_d.id,
-                watch_d.source.label("name"),
+                watch_d.source.label("source_name"),
                 func.ST_X(watch_d.event_skypos).label("ra"),
                 func.ST_Y(watch_d.event_skypos).label("dec"),
                 watch_d.t_end.label("watch_until"),
