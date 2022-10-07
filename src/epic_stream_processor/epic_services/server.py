@@ -1,4 +1,5 @@
 import json
+import warnings
 from concurrent import futures
 from timeit import default_timer as timer
 from typing import Iterator
@@ -20,14 +21,13 @@ from .service_hub import ServiceHub
 from .watch_dog import EpicPixels
 from .watch_dog import WatchDog
 
-import warnings
-
 
 class epic_postprocessor(epic_post_servicer):
     warnings.simplefilter("ignore", DeprecationWarning)
     warnings.warn(
         "Server based on gRPC is much slower than the ThreadedServer implementation. \
-        This module will be removed in the future versions.",  DeprecationWarning
+        This module will be removed in the future versions.",
+        DeprecationWarning,
     )
 
     def __init__(

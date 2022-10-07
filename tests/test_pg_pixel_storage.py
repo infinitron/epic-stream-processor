@@ -1,5 +1,3 @@
-from typing import Type
-
 from pytest_pgsql import PostgreSQLTestDB
 
 from epic_stream_processor.epic_orm.pg_pixel_storage import Base

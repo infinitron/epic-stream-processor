@@ -2,9 +2,9 @@
 
 from . import service_hub
 from . import watch_dog
-from .uds_server import ThreadedServer
 from .uds_client import stream_data_uds
 from .uds_client import stream_packed_uds
+from .uds_server import ThreadedServer
 
 
 __all__ = [

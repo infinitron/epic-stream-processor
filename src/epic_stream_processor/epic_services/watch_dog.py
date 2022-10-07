@@ -10,18 +10,20 @@ from uuid import uuid4
 import numpy as np
 import pandas as pd
 from astropy.io.fits import Header
-from sqlalchemy import insert, update, select
+from sqlalchemy import insert
+from sqlalchemy import select
+from sqlalchemy import update
 from sqlalchemy.sql.expression import bindparam
 
 from .._utils import DynSources
 from .._utils import PatchMan
 from .._utils import get_lmn_grid
+from ..epic_orm.pg_pixel_storage import EpicWatchdogTable
 from ..epic_types import NDArrayBool_t
 from ..epic_types import NDArrayNum_t
 from ..epic_types import Patch_t
 from ..epic_types import WatchMode_t
 from .service_hub import ServiceHub
-from ..epic_orm.pg_pixel_storage import EpicWatchdogTable
 
 
 class WatchDog:
@@ -34,6 +36,7 @@ class WatchDog:
         if serviceHub is not None:
             self._service_Hub = serviceHub
 
+        self._staging_watch_df = pd.DataFrame()
         self._load_sources()
         self._watch_df = pd.DataFrame(
             columns=["id", "source_name", "ra", "dec", "patch_type"]
@@ -69,13 +72,16 @@ class WatchDog:
         ra: float,
         dec: float,
         t_start: datetime,
-        t_end: datetime = None,
+        t_end: Optional[datetime] = None,
         watch_mode: WatchMode_t = "continuous",
         patch_type: Patch_t = "3x3",
     ) -> None:
 
         if watch_mode == "continuous":
             t_end = datetime.utcnow() + timedelta(days=99 * 365.25)
+
+        if t_end is None:
+            t_end = t_start + timedelta(days=7)
 
         self._staging_watch_df = self._staging_watch_df.append(
             dict(
@@ -95,7 +101,7 @@ class WatchDog:
         # if watch_until is not None and watch_mode != "continuous":
         #     self._add_watch_timer(f"{id}", watch_until)
 
-    def _update_watch_df(self):
+    def _update_watch_df(self) -> None:
         stag = self._staging_watch_df
         now = datetime.utcnow()
 
@@ -114,11 +120,13 @@ class WatchDog:
 
         upd_dicts = [dict(_id=int(i), watch_status="watched") for i in watched_ids]
         stmt = (
-            update(EpicWatchdogTable)
+            update(EpicWatchdogTable)  # type: ignore[arg-type]
             .where(EpicWatchdogTable.id == bindparam("_id"))
             .values({"watch_status": bindparam("watch_status")})
         )
-        self._service_Hub._pgdb._connection.execute(stmt, upd_dicts)
+        self._service_Hub._pgdb._connection.execute(
+            stmt, upd_dicts
+        )  # type: ignore[no-untyped-call]
 
     def add_voevent_and_watch(self, voevent: str) -> None:
         raise NotImplementedError("External VOEvent handler not implemented yet")
@@ -128,34 +136,40 @@ class WatchDog:
         source_name: str,
         ra: float,
         dec: float,
-        event_time: Optional[str],
-        t_start: Optional[str],
-        t_end: Optional[str],
+        event_time: str,
+        t_start: str,
+        t_end: str,
         author: str = "batman",
         reason: str = "Detection of FRBs",
         watch_mode: WatchMode_t = "continuous",
         patch_type: Patch_t = "3x3",
         event_type: str = "Manual trigger",
         voevent: str = "<?xml version='1.0'?><Empty></Empty>",
-        **kwargs,
+        **kwargs: str,
     ) -> None:
         # check if the name already exists
-        stmt = select(EpicWatchdogTable).filter_by(source=source_name)
-        result = self._service_Hub._pgdb._connection.execute(stmt).all()
+        stmt = select(EpicWatchdogTable).filter_by(  # type: ignore[arg-type, attr-defined]
+            source=source_name
+        )
+        result = self._service_Hub._pgdb._connection.execute(
+            stmt
+        ).all()  # type: ignore[no-untyped-call]
         if len(result) > 0:
             raise Exception(f"{source_name} already exists in the watch list.")
 
-        t_start = datetime.fromisoformat(t_start) or datetime.utcnow()
-        t_end = datetime.fromisoformat(t_end) or datetime.utcnow() + timedelta(days=7)
+        t_start_dt = datetime.fromisoformat(t_start) or datetime.utcnow()
+        t_end_dt = datetime.fromisoformat(t_end) or datetime.utcnow() + timedelta(
+            days=7
+        )
         stmt = (
-            insert(EpicWatchdogTable)
+            insert(EpicWatchdogTable)  # type: ignore[arg-type]
             .values(
                 source=source_name,
                 event_skypos=f"SRID=4326; POINT({ra} {dec})",
                 event_time=datetime.fromisoformat(event_time) or datetime.utcnow(),
                 event_type=event_type,
-                t_start=t_start,
-                t_end=t_end,
+                t_start=t_start_dt,
+                t_end=t_end_dt,
                 watch_mode=watch_mode,
                 patch_type=patch_type,
                 reason=reason,
@@ -166,11 +180,11 @@ class WatchDog:
             .returning(EpicWatchdogTable.id)
         )
 
-        result = self._service_Hub._pgdb._connection.execute(stmt).all()
+        result = self._service_Hub._pgdb._connection.execute(stmt).all()  # type: ignore[no-untyped-call]
         id = result[0][0]
 
         self.watch_source(
-            id, source_name, ra, dec, t_start, t_end, watch_mode, patch_type
+            id, source_name, ra, dec, t_start_dt, t_end_dt, watch_mode, patch_type
         )
 
         # id = Column(Integer, primary_key=True)  # serial type

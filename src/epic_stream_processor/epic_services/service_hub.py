@@ -37,9 +37,9 @@ class ServiceHub:
             self.insert_multi_epoch_pgdb
         )
 
-    def __call__(self, *args, **kwargs) -> ServiceHub:
+    def __call__(self, *args, **kwargs) -> ServiceHub:  # type: ignore[no-untyped-def]
         if not hasattr(self, "instance"):
-            self.instance = super(ServiceHub, self).__call__(*args, **kwargs)
+            self.instance: ServiceHub = super().__call__(*args, **kwargs)  # type: ignore[misc]
         return self.instance
 
     def _connect_pgdb(self, engine: Engine | None = None) -> None:
@@ -134,6 +134,6 @@ class ServiceHub:
         self,
         func: Callable[..., Any],
         timestamp: datetime,
-        args: tuple[Any, ...] | None = None
+        args: tuple[Any, ...] | None = None,
     ) -> None:
         self._scheduler.add_job(func, trigger="date", args=args, run_date=timestamp)

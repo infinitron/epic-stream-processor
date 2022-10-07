@@ -16,11 +16,13 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session
 
-from .pg_types import XMLType
 from .pg_types import PgPointType
+from .pg_types import XMLType
 
 
-_default_pg_conn_str = "postgresql:///postgres?host=/var/run/postgresql&database=epic_db"
+_default_pg_conn_str = (
+    "postgresql:///postgres?host=/var/run/postgresql&database=epic_db"
+)
 Base = declarative_base()
 
 

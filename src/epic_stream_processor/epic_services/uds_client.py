@@ -1,8 +1,11 @@
 import json
 import socket
 import traceback
+from datetime import datetime
+from datetime import timedelta
 from importlib.resources import path as res_path
 from pathlib import Path
+from socket import socket as socket_c
 
 # from socketserver import BaseServer
 # from socketserver import StreamRequestHandler
@@ -12,8 +15,6 @@ from typing import Optional
 from typing import Tuple
 from typing import Type
 from typing import Union
-from socket import socket as socket_c
-from datetime import datetime, timedelta
 
 import numpy as np
 from astropy.io import fits
@@ -23,16 +24,18 @@ from .. import example_data
 from .._utils.Utils import get_thread_UDS_addr
 from ..epic_grpc.epic_image_pb2 import epic_image
 from ..epic_types import NDArrayNum_t
-from ..epic_types import WatchMode_t, Patch_t
+from ..epic_types import Patch_t
+from ..epic_types import WatchMode_t
+
 
 # from epic_stream_processor.epic_grpc import epic_image_pb2
 # from .._utils.Utils import DotDict as dotdict
 
 
 try:
+    from socket import _RetAddress
     from socketserver import _AddressType
     from socketserver import _RequestType
-    from socket import _RetAddress
 except Exception:
     _RequestType = Union[Type[socket_c], Type[Tuple[bytes, socket_c]]]  # type: ignore[misc]
     _AddressType = Union[Type[str], Type[Tuple[str, int]]]  # type: ignore[misc]
@@ -53,7 +56,7 @@ def stream_data_uds(
             )
         )
     )
-    stream_packed_uds(json.dumps(header), data)
+    stream_packed_uds(json.dumps(header), data, addr)
 
 
 def get_dummy_data(
@@ -108,7 +111,7 @@ def send_man_watch_req(
     patch_type: Patch_t = "3x3",
     event_type: str = "Manual trigger",
 ) -> str:
-    def fmt_time(t: Optional[datetime], add_s: float = 0):
+    def fmt_time(t: Optional[datetime], add_s: float = 0) -> str:
         return (
             t.isoformat()
             if t is not None
@@ -143,9 +146,9 @@ def send_man_watch_req(
                 return resp
             else:
                 return resp
-        return ""
     except Exception:
         print(traceback.format_exc())
+        return ""
 
 
 # def add_to

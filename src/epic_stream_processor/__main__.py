@@ -1,12 +1,16 @@
 """Command-line interface."""
+from typing import Optional
+from typing import Union
+
 import click
+from click import Context
 
 
 @click.group()
 @click.version_option()
 # @click.option("--start", "-S", is_flag=True, help="Start the stream processor")
 @click.pass_context
-def main(ctx) -> None:
+def main(ctx: Context) -> None:
     """Epic Stream Processor."""
     pass
 
@@ -42,11 +46,15 @@ def main(ctx) -> None:
     help="DB password. Defaults to peer authentication if not set",
     required=False,
 )
-def start(db_name, port, db_user, db_type, db_host, password):
+def start(
+    db_name: str, port: int, db_user: str, db_type: str, db_host: str, password: str
+) -> None:
     """Start the epic stream processing server"""
-    from epic_stream_processor.epic_services.uds_server import ThreadedServer
-    from epic_stream_processor._utils.Utils import get_thread_UDS_addr
     from sqlalchemy import create_engine
+
+    from epic_stream_processor._utils.Utils import get_thread_UDS_addr
+    from epic_stream_processor.epic_services.uds_server import ThreadedServer
+
     # import os
 
     conn_str = f"{db_type}:///?"
@@ -125,24 +133,25 @@ def start(db_name, port, db_user, db_type, db_host, password):
     #  But why microseconds? Because Batman wants to.
 )
 def watch(
-    source_name,
-    right_ascension,
-    declination,
-    skypos_format,
-    watch_mode,
-    patch_type,
-    reason,
-    author,
-    watch_begin,
-    watch_duration,
-):
+    source_name: str,
+    right_ascension: Union[float, str],
+    declination: Union[float, str],
+    skypos_format: str,
+    watch_mode: str,
+    patch_type: str,
+    reason: str,
+    author: str,
+    watch_begin: Optional[str],
+    watch_duration: Optional[str],
+) -> None:
     """Watch for the specified source in the incoming data.
 
     Any pixel data falling within the image FOV will be stored
     in a pgDB. For solar system sources specify the ra and dec as 0, 0.
     """
-    from epic_stream_processor.epic_services.uds_client import send_man_watch_req
     from datetime import timedelta
+
+    from epic_stream_processor.epic_services.uds_client import send_man_watch_req
 
     # format the sky coordinates
     if skypos_format == "hms":
@@ -157,14 +166,19 @@ def watch(
     if watch_begin is None:
         from datetime import datetime
 
-        watch_begin = datetime.utcnow()
+        t_start = datetime.utcnow()
+
+    else:
+        from datetime import datetime
+
+        t_start = datetime.fromisoformat(watch_begin)
 
     if watch_duration is None:
-        watch_end = watch_begin + timedelta(days=7)
+        t_end = t_start + timedelta(days=7)
     else:
         import humanreadable as hr
 
-        watch_end = watch_begin + timedelta(
+        t_end = t_start + timedelta(
             days=hr.Time(watch_duration).days,
             hours=hr.Time(watch_duration).hours,
             minutes=hr.Time(watch_duration).minutes,
@@ -174,15 +188,15 @@ def watch(
         )
 
     if watch_mode == "continuous":
-        watch_end = watch_begin + timedelta(days=99 * 365.25)
+        t_end = t_start + timedelta(days=99 * 365.25)
 
     resp = send_man_watch_req(
         source_name=source_name,
-        ra=right_ascension,
-        dec=declination,
+        ra=float(right_ascension),
+        dec=float(declination),
         author=author,
-        t_start=watch_begin,
-        t_end=watch_end,
+        t_start=t_start,
+        t_end=t_end,
         reason=reason,
         watch_mode=watch_mode,
         patch_type=patch_type,

@@ -1,5 +1,6 @@
 import json
 import time
+import warnings
 from importlib.resources import path as res_path
 from pathlib import Path
 from typing import Iterator
@@ -19,7 +20,6 @@ from ..epic_grpc.epic_image_pb2 import epic_image
 from ..epic_grpc.epic_image_pb2_grpc import epic_post_processStub
 from ..epic_types import NDArrayNum_t
 
-import warnings
 
 warnings.simplefilter("always", DeprecationWarning)
 
@@ -30,7 +30,8 @@ _CHUNK_SIZE_ = int(819200)
 class EpicRPCClient:
     warnings.warn(
         "Server based on gRPC is much slower than the ThreadedServer implementation. \
-        This module will be removed in the future versions.", DeprecationWarning
+        This module will be removed in the future versions.",
+        DeprecationWarning,
     )
 
     def __init__(self, connect: bool = False) -> None:
