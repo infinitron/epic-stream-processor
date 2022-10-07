@@ -4,17 +4,12 @@ from datetime import datetime
 from datetime import timedelta
 from typing import Any
 from typing import Callable
-from typing import Dict
-from typing import Optional
 from typing import TypeVar
-from typing import Union
 
 import pandas as pd
-import psycopg
 from apscheduler.schedulers.background import BackgroundScheduler
 from geoalchemy2 import Geometry
 from pytz import utc  # type: ignore[import]
-from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 from streamz import Stream
 
@@ -42,17 +37,17 @@ class ServiceHub:
             self.insert_multi_epoch_pgdb
         )
 
-    def __new__(cls) -> ServiceHub:
-        if not hasattr(cls, "instance"):
-            cls.instance = super().__new__(cls)
-        return cls.instance
+    def __call__(self, *args, **kwargs) -> ServiceHub:
+        if not hasattr(self, "instance"):
+            self.instance = super(ServiceHub, self).__call__(*args, **kwargs)
+        return self.instance
 
     def _connect_pgdb(self, engine: Engine | None = None) -> None:
         # establish postgres connection
         # TODO: fetch the connection details from sys config service
 
         try:
-            self._pgdb = Database(engine=engine)
+            self._pgdb = Database(engine=engine, create_all_tables=True)
             # self._pg_conn = psycopg.connect(
             #     dbname="postgres", user="batman", host="/var/run/postgresql"
             # )
@@ -138,7 +133,7 @@ class ServiceHub:
     def schedule_job_date(
         self,
         func: Callable[..., Any],
-        args: tuple[Any, ...] | None = None,
-        timestamp: datetime = datetime.now(),
+        timestamp: datetime,
+        args: tuple[Any, ...] | None = None
     ) -> None:
         self._scheduler.add_job(func, trigger="date", args=args, run_date=timestamp)
