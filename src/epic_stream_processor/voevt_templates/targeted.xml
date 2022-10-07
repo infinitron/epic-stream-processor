@@ -1,0 +1,62 @@
+A Sample VOEvent: 
+Emily Petroff & Leon Houben
+
+<?xml version='1.0' encoding='UTF-8'?>
+<voe:VOEvent xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:voe="http://www.ivoa.net/xml/VOEvent/v2.0" xsi:schemaLocation="http://www.ivoa.net/xml/VOEvent/v2.0 http://www.ivoa.net/xml/VOEvent/VOEvent-v2.0.xsd" version="2.0" role="utility" ivorn="ivo://[institute]/[instrument]#OBS[YYMMDDhhmm]/[MJD]"> <!-- MJD of VOEvent creation -->
+    <Who>
+    	<AuthorIVORN>ivo://[institute]/contact</AuthorIVORN>
+    	<Date>[YYYY-MM-DDThh:mm:ss]</Date> <!-- Time of event creation -->
+    	<Author><contactEmail>[E-mail]</contactEmail><contactName>[Name]</contactName></Author>
+    </Who>
+    <What>
+        <Group name="observatory parameters">
+            <Param dataType="float" name="beam_semi-major_axis" ucd="instr.beam;pos.errorEllipse;phys.angSize.smajAxis" unit="MM" value=""/>
+            <Param dataType="float" name="beam_semi-minor_axis" ucd="instr.beam;pos.errorEllipse;phys.angSize.sminAxis" unit="MM" value=""/>
+            <Param dataType="float" name="beam_rotation_angle" ucd="instr.beam;pos.errorEllipse;instr.offset" unit="Degrees" value=""/>
+    	    <Param dataType="float" name="sampling_time" ucd="time.resolution" unit="ms" value=""/>
+    	    <Param dataType="float" name="bandwidth" ucd="instr.bandwidth" unit="MHz" value=""/>
+    	    <Param dataType="float" name="nchan" ucd="meta.number;em.freq;em.bin" unit="None" value=""/>
+    	    <Param dataType="float" name="centre_frequency" ucd="em.freq;instr" unit="MHz" value=""/>
+    	    <Param dataType="int" name="npol" unit="None" value=""/>
+    	    <Param dataType="int" name="bits_per_sample" unit="None" value=""/>
+    	    <Param dataType="float" name="gain" unit="K/Jy" value=""/>
+    	    <Param dataType="float" name="tsys" ucd="phot.antennaTemp" unit="K" value=""/>
+    	    <Param name="backend" value=""/>
+    	    <Param name="beam" value=""><Description>Detection beam number if backend is a multi beam receiver</Description></Param>
+        </Group>
+        <Group name="observation parameters">
+            <Param dataType="float" name="observation_start_MJD" ucd="obs.param;time.start" unit="MJD" value=""/>
+            <Param dataType="float" name="observation_end_MJD" ucd="obs.param;time.end" unit="MJD" value=""/>
+            <Param dataType="float" name="observation_duration" ucd="obs.param;time.duration" unit="s" value=""/>
+            <!-- Boresight celestial position of telescope -->
+            <Param dataType="float" name="observation_RA" ucd="obs.param;pos.eq.ra" unit="Degrees" value=""/>
+            <Param dataType="float" name="observation_DEC" ucd="obs.param;pos.eq.dec" unit="Degrees" value=""/>
+            <Param name="target_name" value=""/><Description>The name of the planned target for the follow-up observation. If no VOEvent citation exists for this event, provide the DOI of the FRB publication.</Description>
+            <!-- Param name="scan_type" value=""/><Description>Fixed or drift scan performed?</Description -->
+        </Group>
+    </What>
+    <WhereWhen>
+    	<ObsDataLocation>
+    	    <ObservatoryLocation id="[Instrument location]"/><ObservationLocation>
+    	        <AstroCoordSystem id="UTC-FK5-GEO"/><AstroCoords coord_system_id="UTC-FK5-GEO">
+    	        <Time unit="s"><TimeInstant><ISOTime>[YYYY-MM-DDThh:mm:ss.ssssss]</ISOTime></TimeInstant></Time> <!-- Time of start observation -->
+    	        <Position2D unit="deg"><Name1>RA</Name1><Name2>Dec</Name2><Value2><C1>[RA in degrees]</C1><C2>[DEC in degrees]</C2></Value2><Error2Radius>[Position error in degrees]</Error2Radius></Position2D> <!-- Coordinates of FoV center at start observation -->
+    	        </AstroCoords>
+    	   </ObservationLocation>
+        </ObsDataLocation>
+    </WhereWhen>
+    <!--
+    <How>
+    	<Description>[Possible instrument details]</Description><Reference uri="[Link to external webpage about instrument]"/>
+    	<Description>[Data]</Description><Reference uri="[Possible link to data (download)]"/>
+	</How>
+	-->
+	<Why importance="None">
+	    <Concept>[Flag that importance corresponds to]</Concept><Description>[Elaboration on flag criteria]</Description>
+	    <Name>FRBYYMMDD</Name> <!-- Name of the FRB -->
+	</Why>
+	<Citations>
+	    <EventIVORN cite="followup">[EventIVORN this event refers to]</EventIVORN>
+	    <Description>[Relation to the cited event]</Description>
+	</Citations>
+</voe:VOEvent>

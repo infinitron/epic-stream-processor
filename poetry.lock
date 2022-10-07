@@ -178,6 +178,14 @@ optional = false
 python-versions = ">=3.6.1"
 
 [[package]]
+name = "chardet"
+version = "5.0.0"
+description = "Universal encoding detector for Python 3"
+category = "main"
+optional = false
+python-versions = ">=3.6"
+
+[[package]]
 name = "charset-normalizer"
 version = "2.0.12"
 description = "The Real First Universal Charset Detector. Open, modern and actively maintained alternative to Chardet."
@@ -209,7 +217,7 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
 
 [[package]]
 name = "coverage"
-version = "6.4.4"
+version = "6.5.0"
 description = "Code coverage measurement for Python"
 category = "dev"
 optional = false
@@ -466,6 +474,20 @@ optional = false
 python-versions = "*"
 
 [[package]]
+name = "humanreadable"
+version = "0.1.0"
+description = "humanreadable is a Python library to convert from human-readable values to Python values."
+category = "main"
+optional = false
+python-versions = ">=3.5"
+
+[package.dependencies]
+typepy = ">=0.6.4,<2"
+
+[package.extras]
+test = ["pytest"]
+
+[[package]]
 name = "identify"
 version = "2.5.1"
 description = "File identification library for Python"
@@ -568,6 +590,20 @@ description = "Safely add untrusted strings to HTML/XML markup."
 category = "dev"
 optional = false
 python-versions = ">=3.7"
+
+[[package]]
+name = "mbstrdecoder"
+version = "1.1.1"
+description = "multi-byte character string decoder"
+category = "main"
+optional = false
+python-versions = ">=3.6"
+
+[package.dependencies]
+chardet = ">=3.0.4,<6"
+
+[package.extras]
+test = ["pytest-md-report (>=0.1)", "pytest (>=6.0.1)", "Faker (>=1.0.2)"]
 
 [[package]]
 name = "mccabe"
@@ -1402,6 +1438,21 @@ doc = ["sphinx-rtd-theme", "sphinx-autodoc-typehints (>=1.2.0)"]
 test = ["pytest", "typing-extensions", "mypy"]
 
 [[package]]
+name = "typepy"
+version = "1.3.0"
+description = "typepy is a Python library for variable type checker/validator/converter at a run time."
+category = "main"
+optional = false
+python-versions = ">=3.6"
+
+[package.dependencies]
+mbstrdecoder = ">=1.0.0,<2"
+
+[package.extras]
+test = ["packaging", "pytz (>=2018.9)", "python-dateutil (>=2.8.0,<3.0.0)", "tcolorpy", "pytest (>=6.0.1)"]
+datetime = ["packaging", "pytz (>=2018.9)", "python-dateutil (>=2.8.0,<3.0.0)"]
+
+[[package]]
 name = "types-protobuf"
 version = "3.20.4"
 description = "Typing stubs for protobuf"
@@ -1519,7 +1570,7 @@ heapdict = "*"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8,<3.11"
-content-hash = "70cd13620a7d44a86a9eeddc55fa10bea87feab63ab0b93f506dcdab1b24b44d"
+content-hash = "03d2e4be30a5faf1dd2849df352caeb8259b77990deff2e428afb62987f61412"
 
 [metadata.files]
 alabaster = []
@@ -1535,6 +1586,7 @@ beautifulsoup4 = []
 black = []
 certifi = []
 cfgv = []
+chardet = []
 charset-normalizer = []
 click = []
 colorama = []
@@ -1560,6 +1612,7 @@ grpc-stubs = []
 grpcio = []
 grpcio-tools = []
 heapdict = []
+humanreadable = []
 identify = []
 idna = []
 imagesize = []
@@ -1569,6 +1622,7 @@ jinja2 = []
 livereload = []
 markdown-it-py = []
 markupsafe = []
+mbstrdecoder = []
 mccabe = []
 mdit-py-plugins = []
 mdurl = []
@@ -1638,6 +1692,7 @@ tomli = []
 toolz = []
 tornado = []
 typeguard = []
+typepy = []
 types-protobuf = []
 types-pytz = []
 typing-extensions = []

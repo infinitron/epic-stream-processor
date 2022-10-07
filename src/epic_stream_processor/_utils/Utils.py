@@ -105,3 +105,10 @@ def get_epic_stpro_uds_id() -> str:
 
 def get_thread_UDS_addr() -> str:
     return f"\0{socket.gethostname()}_epic_processor"
+
+
+# class DotDict(dict):
+#     """dot.notation access to dictionary attributes."""
+#     __getattr__ = dict.get
+#     __setattr__ = dict.__setitem__
+#     __delattr__ = dict.__delitem__

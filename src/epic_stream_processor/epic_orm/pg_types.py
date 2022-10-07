@@ -5,7 +5,6 @@ from typing import Union
 from xml.etree.ElementTree import Element
 
 import sqlalchemy
-from sqlalchemy.types import TypeEngine
 
 
 class XMLType(sqlalchemy.types.UserDefinedType):  # type: ignore [type-arg]
@@ -35,5 +34,22 @@ class XMLType(sqlalchemy.types.UserDefinedType):  # type: ignore [type-arg]
             if value is not None:
                 value_el = etree.fromstring(value)
             return value_el
+
+        return process
+
+
+class PgPointType(sqlalchemy.types.UserDefinedType):  # type: ignore [type-arg]
+    def get_col_spec(self) -> str:
+        return "POINT"
+
+    def bind_processor(self, dialect):  # type: ignore [no-untyped-def]
+        def process(value):  # type: ignore [no-untyped-def]
+            return value
+
+        return process
+
+    def result_processor(self, dialect, coltype):  # type: ignore [no-untyped-def]
+        def process(value):  # type: ignore [no-untyped-def]
+            return value
 
         return process

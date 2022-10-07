@@ -1,17 +1,13 @@
 import json
-import socket
+import warnings
 from concurrent import futures
 from timeit import default_timer as timer
-from typing import Dict
 from typing import Iterator
 from typing import Optional
-from typing import Tuple
 
 import grpc
 import numpy as np
 from numpy.lib.stride_tricks import as_strided
-
-from epic_stream_processor.epic_types import NDArrayNum_t
 
 from .._utils import get_epic_stpro_uds_id
 from ..epic_grpc import epic_image_pb2
@@ -27,6 +23,13 @@ from .watch_dog import WatchDog
 
 
 class epic_postprocessor(epic_post_servicer):
+    warnings.simplefilter("ignore", DeprecationWarning)
+    warnings.warn(
+        "Server based on gRPC is much slower than the ThreadedServer implementation. \
+        This module will be removed in the future versions.",
+        DeprecationWarning,
+    )
+
     def __init__(
         self,
         storage_servicer: Optional[ServiceHub] = None,
