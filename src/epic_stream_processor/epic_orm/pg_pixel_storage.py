@@ -7,7 +7,6 @@ from sqlalchemy import TIMESTAMP
 from sqlalchemy import Column
 from sqlalchemy import Float
 from sqlalchemy import Integer
-from sqlalchemy import Sequence
 from sqlalchemy import Text
 from sqlalchemy import create_engine
 from sqlalchemy import func
@@ -18,21 +17,22 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session
 
 from .pg_types import XMLType
+from .pg_types import PgPointType
 
 
-_default_pg_conn_str = "postgresql:///postgres?host=/var/run/postgresql"
+_default_pg_conn_str = "postgresql:///postgres?host=/var/run/postgresql&database=epic_db"
 Base = declarative_base()
 
 
 class EpicPixelsTable(Base):
     __tablename__ = "epic_pixels"
 
-    counter = Column(Integer, Sequence("counter_seq"), primary_key=True)
+    counter = Column(Integer, primary_key=True)
     id = Column(UUID, nullable=False)
     pixel_values = Column(ARRAY(Float), nullable=False)
-    pixel_coord = Column(Geometry("POINT"), nullable=False)
-    pixel_lm = Column(Geometry("POINT"), nullable=False)
-    source_names = Column(ARRAY(Text), nullable=False)
+    pixel_coord = Column(PgPointType, nullable=False)
+    pixel_lm = Column(PgPointType, nullable=False)
+    source_names = Column(Text, nullable=False)
     pixel_skypos = Column(Geometry(geometry_type="POINT", srid=4326))
 
 
@@ -46,7 +46,7 @@ class EpicImgMetadataTable(Base):
     chan0 = Column(Float, nullable=False)
     chan_bw = Column(Float, nullable=False)
     epic_version = Column(Text, nullable=False)
-    img_size = Column(Geometry("POINT"), nullable=False)
+    img_size = Column(PgPointType, nullable=False)
 
 
 class EpicWatchdogTable(Base):
@@ -97,12 +97,12 @@ class Database:
                 watch_d.source.label("source_name"),
                 func.ST_X(watch_d.event_skypos).label("ra"),
                 func.ST_Y(watch_d.event_skypos).label("dec"),
-                watch_d.t_end.label("watch_until"),
+                watch_d.t_start,
+                watch_d.t_end,
                 watch_d.watch_mode,
                 watch_d.patch_type,
             ]
         ).where(watch_d.watch_status == "watching")
-        print(stmnt)
         return pd.read_sql(
             stmnt,
             self._engine,
