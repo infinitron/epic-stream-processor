@@ -49,6 +49,7 @@ class EpicImgMetadataTable(Base):
     chan_bw = Column(Float, nullable=False)
     epic_version = Column(Text, nullable=False)
     img_size = Column(PgPointType, nullable=False)
+    int_time = Column(Float, nullable=False)
 
 
 class EpicWatchdogTable(Base):
