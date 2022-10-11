@@ -95,6 +95,7 @@ class Processors:
             img_array,
             ctx.watch_dog._watch_df,
             epic_ver="0.0.2",
+            elevation_limit=30,
         )
         pixels.gen_pixdata_dfs()
         pixels.store_pg(ctx.service_hub)

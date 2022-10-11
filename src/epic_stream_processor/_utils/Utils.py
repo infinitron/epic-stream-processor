@@ -74,15 +74,15 @@ def get_lmn_grid(xsize: int, ysize: int) -> NDArrayNum_t:
 
 class DynSources:
 
-    lwasv_loc = EarthLocation(lat=-34.348333 * u.deg, lon=-105.114422 * u.deg)
+    lwasv_loc = EarthLocation(lat=34.348361 * u.deg, lon=-106.885778 * u.deg)
+    # EarthLocation(lat=34.348333 * u.deg, lon=-105.114422 * u.deg)
     bodies = solar_system_ephemeris.bodies
 
     @staticmethod
     def get_lwasv_skypos(body: str, t_obs_str: str) -> List[float]:
         time = Time(t_obs_str, format="isot", scale="utc")
-
         loc = get_body(body, time, DynSources.lwasv_loc)
-        return [loc.ra.degree, loc.dec.degree]
+        return [loc.ra.value, loc.dec.value]
 
 
 # for body in solar_system_ephemeris.bodies:
