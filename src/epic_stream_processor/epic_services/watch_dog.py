@@ -10,6 +10,7 @@ from uuid import uuid4
 import numpy as np
 import pandas as pd
 from astropy.io.fits import Header
+from astropy.wcs import WCS
 from sqlalchemy import insert
 from sqlalchemy import select
 from sqlalchemy import update
@@ -31,10 +32,10 @@ class WatchDog:
     Monitors the locations of specified sources on EPIC images.
     """
 
-    def __init__(self, serviceHub: Optional[ServiceHub] = None):
+    def __init__(self, service_hub: Optional[ServiceHub] = None):
         self._service_Hub: ServiceHub
-        if serviceHub is not None:
-            self._service_Hub = serviceHub
+        if service_hub is not None:
+            self._service_Hub = service_hub
 
         self._staging_watch_df = pd.DataFrame()
         self._load_sources()
@@ -555,9 +556,13 @@ class EpicPixels:
         self.dgridx = self.primary_hdr["DGRIDX"]
         self.dgrixy = self.primary_hdr["DGRIDY"]
 
+        self.inttime = self.primary_hdr["INTTIM"]
+
         self.t_obs = self.img_hdr["DATETIME"]
 
-        self.max_rad = self.xdim * self.dgridx * np.cos(np.deg2rad(elevation_limit))
+        self.wcs = WCS(self.img_hdr, naxis=2)
+
+        self.max_rad = self.xdim * 0.5 * np.cos(np.deg2rad(elevation_limit))
 
     def ra2x(self, ra: Union[float, NDArrayNum_t]) -> Union[float, NDArrayNum_t]:
         """Return the X-pixel (0-based index) number given an RA"""
@@ -622,6 +627,7 @@ class EpicPixels:
             chan_bw=[ihdr["CDELT3"]],
             epic_version=[self.epic_ver],
             img_size=[str((ihdr["NAXIS1"], ihdr["NAXIS2"]))],
+            int_time=self.inttime,
         )
 
     def store_pg(self, s_hub: ServiceHub) -> None:
@@ -648,9 +654,19 @@ class EpicPixels:
         # print(f'Elapsed UPD: {timer()-start} s',self._watch_df.shape)
 
         # drop any sources outside the sky
-        self.x_l = self.ra2x(self.ra_l)
-        self.y_l = self.dec2y(self.dec_l)
-        self.in_fov = self.is_pix_fov(self.x_l, self.y_l)
+        # self.x_l = self.ra2x(self.ra_l)
+        # self.y_l = self.dec2y(self.dec_l)
+
+        self.x_l, self.y_l = self.wcs.all_world2pix(
+            self.ra_l, self.dec_l, 1
+        )  # 1-based index
+        self.x_l, self.y_l = self.nearest_pix(self.x_l), self.nearest_pix(self.y_l)
+        # print(self.x_l, self.y_l)
+        self.in_fov = np.logical_and(
+            (self.x_l >= 0), (self.y_l >= 0)
+        )  # self.is_pix_fov(self.x_l, self.y_l)
+
+        # print(self.in_fov)
 
         # filter the indices or sources outside the sky
         self.watch_l = np.vstack(
@@ -672,6 +688,8 @@ class EpicPixels:
             return
         self.watch_l = self.watch_l[:, self.in_fov]
 
+        # print(self.watch_l)
+
         xpatch_pix_idx, ypatch_pix_idx = np.hstack(
             list(map(PatchMan.get_patch_idx, self.watch_l[-1, :]))
         )
@@ -680,11 +698,21 @@ class EpicPixels:
             self.watch_l, self.watch_l[-1, :].astype(int) ** 2, axis=1
         )
 
-        # update the pixel indices and remove sources if they cross the fov
+        # update the pixel indices
         self.watch_l[3, :] += xpatch_pix_idx
         self.watch_l[4, :] += ypatch_pix_idx
 
-        self.watch_l[-2, :] = self.is_pix_fov(self.watch_l[3, :], self.watch_l[4, :])
+        # remove sources if they cross the fov
+        self.watch_l[1, :], self.watch_l[2, :] = self.wcs.all_pix2world(
+            self.watch_l[3, :], self.watch_l[4, :], 1
+        )
+
+        self.watch_l[-2, :] = np.logical_not(
+            np.isnan(self.watch_l[1, :]) | np.isnan(self.watch_l[2, :])
+        ) & self.is_pix_fov(self.watch_l[3, :], self.watch_l[4, :])
+
+        # print(self.is_pix_fov(self.watch_l[3, :], self.watch_l[4, :]))
+        # self.is_pix_fov(self.watch_l[3, :], self.watch_l[4, :])
 
         # test fov crossing
         groups = np.split(
@@ -697,13 +725,18 @@ class EpicPixels:
         self.watch_l = self.watch_l[:, np.concatenate(is_out_fov).astype(bool).ravel()]
 
         # update the ra, dec
-        self.watch_l[1, :] += xpatch_pix_idx * self.dx
-        self.watch_l[2, :] += ypatch_pix_idx * self.dy
+        # self.watch_l[1, :] += xpatch_pix_idx * self.dx
+        # self.watch_l[2, :] += ypatch_pix_idx * self.dy
 
         # extract the pixel values for each pixel
         # img_array indices [complex, npol, nchan, y, x]
         pix_values = self.img_array[
-            :, :, :, self.watch_l[4, :].astype(int), self.watch_l[3, :].astype(int)
+            :,
+            :,
+            :,
+            self.watch_l[4, :].astype(int)
+            - 1,  # convert 1-based to 0-based for np indexing
+            self.watch_l[3, :].astype(int) - 1,
         ]
         pix_values_l = [
             pix_values[:, :, :, i].ravel().tolist() for i in range(pix_values.shape[-1])
@@ -738,13 +771,15 @@ class EpicPixels:
         self.pixel_idx_df = pd.DataFrame.from_dict(
             dict(
                 id=[self.pixel_meta_df.iloc[0]["id"] for i in range(len(l_vals))],
-                pixel_values=pix_values_l,
                 pixel_coord=pix_coord_fmt,
+                pixel_values=pix_values_l,
                 pixel_skypos=skypos_pg_fmt,
                 source_names=source_names,
                 pixel_lm=lm_coord_fmt,
             )
         )
+
+        # print(self.pixel_idx_df, self.pixel_meta_df)
 
     def _update_src_skypos(
         self,
