@@ -222,6 +222,8 @@ class EpicPixels:
 
         self.max_rad = self.xdim * 0.5 * np.cos(np.deg2rad(elevation_limit))
 
+        self.filename = self.img_hdr["FILENAME"]
+
     def ra2x(self, ra: Union[float, NDArrayNum_t]) -> Union[float, NDArrayNum_t]:
         """Return the X-pixel (0-based index) number given an RA"""
         pix = (ra - self.ra0) / self.dx + self.x0
@@ -274,7 +276,7 @@ class EpicPixels:
         )
         return is_fov
 
-    def header_to_metadict(self) -> Dict[str, Any]:
+    def header_to_metadict(self, source_names: List[str]) -> Dict[str, Any]:
         ihdr = self.img_hdr
         return dict(
             id=[str(uuid4())],
@@ -286,6 +288,8 @@ class EpicPixels:
             epic_version=[self.epic_ver],
             img_size=[str((ihdr["NAXIS1"], ihdr["NAXIS2"]))],
             int_time=self.inttime,
+            filename=self.filename,
+            source_names=[source_names.tolist()]
         )
 
     def store_pg(self, s_hub: ServiceHub) -> None:
@@ -363,7 +367,10 @@ class EpicPixels:
         is_out_fov = [i if np.all(i) else np.logical_and(i, False) for i in groups]
 
         # filter patches crossing fov
-        self.watch_l = self.watch_l[:, np.concatenate(is_out_fov).astype(bool).ravel()]
+        is_out_fov = np.concatenate(is_out_fov).astype(bool).ravel()
+        self.watch_l = self.watch_l[:, is_out_fov]
+        xpatch_pix_idx = xpatch_pix_idx[is_out_fov]
+        ypatch_pix_idx = ypatch_pix_idx[is_out_fov]
 
         # extract the pixel values for each pixel
         # img_array indices [complex, npol, nchan, y, x]
@@ -402,7 +409,9 @@ class EpicPixels:
         ]
         source_names = self.src_l[self.watch_l[0, :].astype(int)]
 
-        self.pixel_meta_df = pd.DataFrame.from_dict(self.header_to_metadict())
+        self.pixel_meta_df = pd.DataFrame.from_dict(self.header_to_metadict(
+            source_names=np.unique(source_names)
+        ))
 
         self.pixel_idx_df = pd.DataFrame.from_dict(
             dict(
@@ -412,6 +421,8 @@ class EpicPixels:
                 pixel_skypos=skypos_pg_fmt,
                 source_names=source_names,
                 pixel_lm=lm_coord_fmt,
+                pix_ofst_x=xpatch_pix_idx,
+                pix_ofst_y=ypatch_pix_idx,
             )
         )
 

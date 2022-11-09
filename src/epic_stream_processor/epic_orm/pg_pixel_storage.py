@@ -11,7 +11,7 @@ from sqlalchemy import Text
 from sqlalchemy import create_engine
 from sqlalchemy import func
 from sqlalchemy import select
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, ARRAY as pg_ARRAY
 from sqlalchemy.engine import Engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session
@@ -36,13 +36,15 @@ class EpicPixelsTable(Base):
     pixel_lm = Column(PgPointType, nullable=False)
     source_names = Column(Text, nullable=False)
     pixel_skypos = Column(Geometry(geometry_type="POINT", srid=4326))
+    pix_ofst_x = Column(Integer, nullable=False)
+    pix_ofst_y = Column(Integer, nullable=False)
 
 
 class EpicImgMetadataTable(Base):
     __tablename__ = "epic_img_metadata"
 
-    id = Column(UUID, primary_key=True, nullable=False)
-    img_time = Column(TIMESTAMP, nullable=False)
+    id = Column(UUID, primary_key=True, nullable=False, index=True)
+    img_time = Column(TIMESTAMP, nullable=False, index=True)
     n_chan = Column(Integer, nullable=False)
     n_pol = Column(Integer, nullable=False)
     chan0 = Column(Float, nullable=False)
@@ -50,6 +52,8 @@ class EpicImgMetadataTable(Base):
     epic_version = Column(Text, nullable=False)
     img_size = Column(PgPointType, nullable=False)
     int_time = Column(Float, nullable=False)
+    filename = Column(Text, nullable=False)
+    source_names = Column(pg_ARRAY(Text), nullable=False)
 
 
 class EpicWatchdogTable(Base):
