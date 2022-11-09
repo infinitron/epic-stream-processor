@@ -151,4 +151,45 @@ def send_man_watch_req(
         return ""
 
 
+def req_epic_run(
+    addr: str,
+    port: int,
+    out_dir: str,
+    cores: str,
+    gpu: int,
+    channels: int,
+    imagesize: int,
+    imageres: float,
+    accumulate: int,
+    nts: int,
+    singlepol: bool,
+    duration: float,
+):
+    args = locals()
+    if not singlepol:
+        del args["singlepol"]
+    args = " ".join([f"--{k} " + str(v) for k, v in args.items()])
+
+    cmd_payload = bytes(f"{args}", "utf-8")
+    uds_addr = get_thread_UDS_addr()
+
+    try:
+
+        addr = get_thread_UDS_addr()
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
+            client.connect(addr)
+            # client.sendall(b"watch_source")\
+            client.sendall(bytes(json.dumps(["run_epic", len(cmd_payload)]), "utf-8"))
+            resp = client.recv(1024).decode("utf-8")
+            if resp == "proceed":
+                client.sendall(cmd_payload)
+                resp = client.recv(1024).decode("utf-8")
+                return resp
+            else:
+                return resp
+    except Exception:
+        print(traceback.format_exc())
+        return ""
+
+
 # def add_to

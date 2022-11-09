@@ -208,5 +208,69 @@ def watch(
         print(resp)
 
 
+@main.command()
+@click.option(
+    "-addr",
+    "--addr",
+    default="239.168.40.14",
+    help="Address to fetch F-engines packets from",
+)
+@click.option("-p", "--port", default="4016", help="F-engine packet port")
+@click.option(
+    "-outd",
+    "--out_dir",
+    default=None,
+    help="Output directory to store the images",
+    required=True,
+)
+@click.option(
+    "-c",
+    "--cores",
+    default="11,12,13,14,15,16",
+    help="list of CPU cores to bind epic to",
+    required=True,
+)
+@click.option(
+    "-g", "--gpu", default="1", help="ID of GPU to bind epic to", required=True
+)
+@click.option(
+    "-chns",
+    "--channels",
+    default=22,
+    help="Number of channels to process. If the number of channels divides 132,\
+         the channels cover the entire bandwidth.",
+)
+@click.option("-imsize", "--imagesize", default=90, help="Size of the output image")
+@click.option("-imres", "--imageres", default=1.444, help="Image resolution in degrees")
+@click.option("-accum", "--accumulate", default=96, help="Image accumulation time")
+@click.option("-nts", "--nts", default=800, help="Number of images in a gulp")
+@click.option(
+    "-singlepol", "--singlepol", default=False, help="Process only X-pol data"
+)
+@click.option("-dur", "--duration", default=10, help="Duration of the run")
+def run_epic(
+    addr,
+    port,
+    out_dir,
+    cores,
+    gpu,
+    channels,
+    imagesize,
+    imageres,
+    accumulate,
+    nts,
+    singlepol,
+    duration,
+):
+    """
+    Start an instance of EPIC imager.
+
+    """
+    args = locals()
+    from epic_stream_processor.epic_services.uds_client import req_epic_run
+    resp = req_epic_run(**args)
+    print(resp)
+
+
 # if __name__ == "__main__":
 #    main(prog_name="epic-stream-processor", obj={})  # pragma: no cover

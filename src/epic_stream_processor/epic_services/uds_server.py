@@ -18,6 +18,7 @@ from typing import Type
 from typing import Union
 
 import numpy as np
+import os
 
 # from astropy.io import fits
 # from astropy.io.fits import Header
@@ -32,6 +33,8 @@ from ..epic_grpc.epic_image_pb2 import epic_image
 from .service_hub import ServiceHub
 from .watch_dog import EpicPixels
 from .watch_dog import WatchDog
+
+from subprocess import Popen, DEVNULL, STDOUT
 
 
 # from importlib.resources import path as res_path
@@ -60,6 +63,22 @@ class ThreadedServerContext:
 
     service_hub: ServiceHub
     watch_dog: WatchDog
+
+
+_epic_python_executable = "/home/epic/anaconda/envs/work/bin/python"
+_epic_script = "/home/epic/batman/LWA_EPIC/LWA_EPIC/LWA_EPIC_jdd.py"
+
+
+def _get_VMA_env():
+    env = os.environ.copy()
+    env["VMA_RX_POLL"] = "1000"
+    env["VMA_INTERNAL_THREAD_AFFINITY"] = "0"
+    env["VMA_RX_PREFETCH_BYTES"] = "128"
+    env["VMA_THREAD_MODE"] = "0"
+    env["VMA_MTU"] = "9000"
+    env["VMA_TRACELEVEL"] = "1,2,3,4"
+    env["LD_PRELOAD"] = "libvma.so"
+    return env
 
 
 class Processors:
@@ -102,7 +121,7 @@ class Processors:
 
     @staticmethod
     def watch_source_p(
-        watch_conf: str, ctx: ThreadedServerContext, client: socket_c
+        watch_conf: bytes, ctx: ThreadedServerContext, client: socket_c
     ) -> None:
         try:
             config = json.loads(watch_conf)
@@ -116,6 +135,55 @@ class Processors:
             client.sendall(bytes(traceback.format_exc(), "utf-8"))
             client.close()
             # print(traceback.format_exc())
+
+    @staticmethod
+    def run_epic_p(
+        epic_args: bytes, ctx: ThreadedServerContext, client: socket_c
+    ) -> None:
+        try:
+            args = epic_args.decode("utf-8")
+            cur_epic_instances = ctx.service_hub.get_num_epic_instances()
+            if cur_epic_instances == 2:
+                client.sendall(
+                    bytes(
+                        "Cannot run more than two instances\
+                     of EPIC simultaneously"
+                    )
+                )
+                client.close()
+
+            run_env = _get_VMA_env()
+            bind_num = 0 if cur_epic_instances < 2 else 1
+            executable = f"numactl --cpubind={bind_num} --membind={bind_num}"
+            executable = f"{executable} {_epic_python_executable} {_epic_script} {args}"
+
+            # launch the instance
+            process = Popen(
+                executable.split(" "),
+                env=run_env,
+                stdout=DEVNULL,
+                stderr=STDOUT,
+            )
+            ctx.service_hub.add_epic_instance(
+                dict(
+                    options=executable,
+                    process=process,
+                )
+            )
+            pid = process.pid
+            print(
+                f"Running EPIC instance. PID {pid}"
+            )
+            # ctx.service_hub.epic_instances[-1].run()
+            client.sendall(
+                bytes(
+                    f"Running {pid}",
+                    "utf-8",
+                )
+            )
+        except Exception:
+            client.sendall(bytes(traceback.format_exc(), "utf-8"))
+            client.close()
 
 
 class ThreadedServer:

@@ -5,6 +5,7 @@ from datetime import timedelta
 from typing import Any
 from typing import Callable
 from typing import TypeVar
+from typing import Dict
 
 import pandas as pd
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -12,6 +13,7 @@ from geoalchemy2 import Geometry
 from pytz import utc  # type: ignore[import]
 from sqlalchemy.engine import Engine
 from streamz import Stream
+
 
 from ..epic_orm.pg_pixel_storage import Database
 
@@ -30,6 +32,7 @@ class ServiceHub:
         self._scheduler.start()
         self._pgdb: Database
         self._connect_pgdb(engine)
+        self._epic_instances = []
 
         # define the stream processor timed_window(5)
         # IMPORTANT: If using a timed window, never set the window to 0!
@@ -116,6 +119,22 @@ class ServiceHub:
     #         result = []
     #         result = self._pg_conn.execute(query, args).fetchall()
     #         return result
+    def get_num_epic_instances(self):
+        count = 0
+        dead_instances = []
+        for i, inst in enumerate(self._epic_instances):
+            if inst['process'] is not None and inst['process'].poll() is None:
+                count += 1
+            else:
+                dead_instances.append(i)
+        
+        for i in dead_instances:
+            del self._epic_instances[i]
+        
+        return count
+
+    def add_epic_instance(self, inst: Dict[str, object]):
+        self._epic_instances.append(inst)
 
     def schedule_job_delay(
         self,
