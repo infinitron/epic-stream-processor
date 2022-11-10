@@ -171,9 +171,7 @@ class Processors:
                 )
             )
             pid = process.pid
-            print(
-                f"Running EPIC instance. PID {pid}"
-            )
+            print(f"Running EPIC instance. PID {pid}")
             # ctx.service_hub.epic_instances[-1].run()
             client.sendall(
                 bytes(
@@ -181,6 +179,16 @@ class Processors:
                     "utf-8",
                 )
             )
+        except Exception:
+            client.sendall(bytes(traceback.format_exc(), "utf-8"))
+            client.close()
+
+    def get_epic_instances_p(
+        _: bytes, ctx: ThreadedServerContext, client: socket_c
+    ) -> None:
+        try:
+            instances = ctx.service_hub.get_epic_instances()
+            client.sendall(bytes(json.dumps(instances), "utf-8"))
         except Exception:
             client.sendall(bytes(traceback.format_exc(), "utf-8"))
             client.close()

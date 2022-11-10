@@ -268,8 +268,26 @@ def run_epic(
     """
     args = locals()
     from epic_stream_processor.epic_services.uds_client import req_epic_run
+
     resp = req_epic_run(**args)
     print(resp)
+
+
+@main.command()
+def get_epic_instances():
+    from epic_stream_processor.epic_services.uds_client import req_epic_instances
+    import json
+
+    instances = req_epic_instances()
+    instances = json.loads(instances)
+    if len(instances) == 0:
+        print("No instances running")
+    else:
+        print(f"Running {len(instances)} EPIC instances.")
+    for i, inst in enumerate(instances):
+        print(f"Instance {i+1}")
+        print(f"{inst['options']}")
+        print(f"PID: {inst['pid']}")
 
 
 # if __name__ == "__main__":

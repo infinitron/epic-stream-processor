@@ -6,6 +6,7 @@ from typing import Any
 from typing import Callable
 from typing import TypeVar
 from typing import Dict
+from typing import List
 
 import pandas as pd
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -123,15 +124,29 @@ class ServiceHub:
         count = 0
         dead_instances = []
         for i, inst in enumerate(self._epic_instances):
-            if inst['process'] is not None and inst['process'].poll() is None:
+            if inst["process"] is not None and inst["process"].poll() is None:
                 count += 1
             else:
                 dead_instances.append(i)
-        
+
         for i in dead_instances:
             del self._epic_instances[i]
-        
+
         return count
+
+    def get_epic_instances(self) -> List[Dict[str, str]]:
+        instances = []
+        dead_instances = []
+        for i, inst in enumerate(self._epic_instances):
+            if inst["process"] is not None and inst["process"].poll() is None:
+                instances.append(dict(options=inst["options"], pid=inst["process"].pid))
+            else:
+                dead_instances.append(i)
+
+        for i in dead_instances:
+            del self._epic_instances[i]
+
+        return instances
 
     def add_epic_instance(self, inst: Dict[str, object]):
         self._epic_instances.append(inst)

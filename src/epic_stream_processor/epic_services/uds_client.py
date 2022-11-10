@@ -151,6 +151,28 @@ def send_man_watch_req(
         return ""
 
 
+def req_epic_instances():
+    addr = get_thread_UDS_addr()
+    try:
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
+            client.connect(addr)
+            # client.sendall(b"watch_source")\
+            payload = bytes(json.dumps("EPIC"), "utf-8")
+            client.sendall(
+                bytes(json.dumps(["get_epic_instances", len(payload)]), "utf-8")
+            )
+            resp = client.recv(1024).decode("utf-8")
+            if resp == "proceed":
+                client.sendall(payload)
+                resp = client.recv(4096).decode("utf-8")
+                return resp
+            else:
+                return resp
+    except Exception:
+        print(traceback.format_exc())
+        return ""
+
+
 def req_epic_run(
     addr: str,
     port: int,
