@@ -33,7 +33,7 @@ class XMLType(sqlalchemy.types.UserDefinedType):  # type: ignore [type-arg]
         def process(value: Union[str, bytes]) -> Element:
             if value is not None:
                 value_el = etree.fromstring(value)
-            return value_el
+                return value_el
 
         return process
 

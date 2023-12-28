@@ -37,23 +37,40 @@ CREATE TABLE IF NOT EXISTS epic_watchdog(
 	id SERIAL NOT NULL,
 	source TEXT NOT NULL,
 	event_time TIMESTAMP NOT NULL,
+	ra_deg FLOAT NOT NULL,
+	dec_deg FLOAT NOT NULL,
 	event_type TEXT NOT NULL,
 	t_start TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 	t_end TIMESTAMP, --UTC
 	watch_mode TEXT DEFAULT 'continuous',
-	patch_type TEXT DEFAULT '3x3'
+	patch_type INT DEFAULT 5,
 	reason TEXT NOT NULL,
 	author TEXT NOT NULL,
 	watch_status TEXT DEFAULT 'watching',
-	voevent XML NOT NULL
+	voevent XML
 );
 
-SELECT
-	AddGeometryColumn(
-		'public',
-		'epic_watchdog',
-		'event_skypos',
-		4326,
-		'POINT',
-		2
-	);
+CREATE TABLE IF NOT EXISTS epic_files_metadata(
+	id SERIAL NOT NULL,
+	file_name TEXT NOT NULL,
+	chan_width FLOAT NOT NULL,
+	nchan INT NOT NULL,
+	support_size INT NOT NULL,
+	gulp_len_ms FLOAT NOT NULL,
+	image_len_ms FLOAT NOT NULL,
+	epoch_time_s FLOAT NOT NULL,
+	grid_size INT NOT NULL,
+	grid_res FLOAT NOT NULL,
+	cfreq_mhz FLOAT NOT NULL,
+	epic_version TEXT NOT NULL
+);
+
+-- SELECT
+-- 	AddGeometryColumn(
+-- 		'public',
+-- 		'epic_watchdog',
+-- 		'event_skypos',
+-- 		4326,
+-- 		'POINT',
+-- 		2
+-- 	);

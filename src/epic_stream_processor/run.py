@@ -121,7 +121,7 @@ def start(addr):
 @click.option(
     "-pt",
     "--patch-type",
-    help="Size of the aggregation window (nxn). Defaults to 3x3",
+    help="Size of the aggregation window (nxn). Defaults to 5x5",
     default=5,
 )
 @click.option(
@@ -150,6 +150,12 @@ def start(addr):
     default=None,
     help="Duration of the watch. Defaults to one week. Provide duration in human readable form. For example,  as '6d23h59m59s9ms1us' or '7d'. This value is not used when watch_mode is set to continuous."
     #  But why microseconds? Because Batman wants to.
+)
+@click.option(
+    "-addr",
+    "--watchdog-addr",
+    help="Address for the watchdog gRPC service",
+    required=True
 )
 def watch(
     source_name: str,

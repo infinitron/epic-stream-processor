@@ -14,6 +14,7 @@ from ..epic_grpc import epic_image_pb2
 from ..epic_grpc import epic_image_pb2_grpc
 from ..epic_grpc.epic_image_pb2 import empty
 from ..epic_grpc.epic_image_pb2 import epic_image
+from ..epic_grpc.epic_image_pb2 import watchlist, watchsourceinfo, status
 from ..epic_grpc.epic_image_pb2_grpc import (
     epic_post_processServicer as epic_post_servicer,
 )
@@ -50,11 +51,25 @@ class epic_postprocessor(epic_post_servicer):
     def set_storage_servicer(self, servicer: ServiceHub) -> None:
         self.watcher.change_storage_servicer(servicer=servicer)
 
+    def fetch_watchlist(self, request: empty, context: object):
+        return watchlist(pd_json=json.dumps(self.watcher._watch_df.to_json()))
+    
+    def watch_source(self, request: watchsourceinfo, context: object):
+        config = json.loads(request.srcinfo_json)
+        req_pars = ["source_name", "ra", "dec", "author"]
+        for par in req_pars:
+            if par not in req_pars:
+                raise Exception(f"{par} is required to watch")
+        self.watcher.add_source_and_watch(**config)
+
+        return status(msg="added")
+
     def filter_and_save(
         self,
         request: epic_image,
         context: object,
     ) -> empty:
+        return empty()
         # decode the header
         print(json.loads(request.header))
 
@@ -68,7 +83,7 @@ class epic_postprocessor(epic_post_servicer):
         request_iterator: Iterator[epic_image],
         context: object,
     ) -> empty:
-        # return empty()
+        return empty()
         # self._ppl.emit(request_iterator)
 
         start = timer()
@@ -92,7 +107,9 @@ class epic_postprocessor(epic_post_servicer):
         buffer_metadata = json.loads(header[2])
 
         # decode the numpy array
-        img_array = np.frombuffer(b"".join(img_buffer), dtype=buffer_metadata["dtype"])
+        img_array = np.frombuffer(
+            b"".join(img_buffer), dtype=buffer_metadata["dtype"]
+        )
         img_array = as_strided(
             img_array, buffer_metadata["shape"], buffer_metadata["strides"]
         )
@@ -118,7 +135,11 @@ class epic_postprocessor(epic_post_servicer):
         #     header[1], img_array, epic_version="0.0.2"
         # )
         pixels = EpicPixels(
-            header[1], header[0], img_array, self.watcher._watch_df, epic_ver="0.0.2"
+            header[1],
+            header[0],
+            img_array,
+            self.watcher._watch_df,
+            epic_ver="0.0.2",
         )
         pixels.gen_pixdata_dfs()
         pixels.store_pg(self.watcher._service_Hub)
@@ -139,7 +160,7 @@ class epic_postprocessor(epic_post_servicer):
 #     return f"{socket.gethostname()}_epic_processor"
 
 
-def serve(max_workers: int = 1) -> None:
+def serve(address: str = "2023", max_workers=1) -> None:
     server = grpc.server(
         futures.ThreadPoolExecutor(max_workers=max_workers),
         options=[("grpc.max_receive_message_length", -1)],
@@ -149,10 +170,12 @@ def serve(max_workers: int = 1) -> None:
     epic_image_pb2_grpc.add_epic_post_processServicer_to_server(
         epic_postprocessor(use_default_servicer=True), server
     )
-    server.add_insecure_port(get_epic_stpro_uds_id())
+    # server.add_insecure_port(get_epic_stpro_uds_id())
+    server.add_insecure_port(address)
     print("Starting")
     server.start()
-    print(f"Running on {get_epic_stpro_uds_id()}...")
+    # print(f"Running on {get_epic_stpro_uds_id()}...")
+    print(f"Running on {address}")
     server.wait_for_termination()
 
 

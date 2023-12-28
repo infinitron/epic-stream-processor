@@ -108,7 +108,7 @@ def send_man_watch_req(
     t_end: Optional[datetime] = None,
     reason: str = "Detection of FRBs",
     watch_mode: WatchMode_t = "continuous",
-    patch_type: Patch_t = "3x3",
+    patch_type: Patch_t = 5,
     event_type: str = "Manual trigger",
 ) -> str:
     def fmt_time(t: Optional[datetime], add_s: float = 0) -> str:

@@ -16,9 +16,10 @@ from .. import example_data
 from .._utils import get_epic_stpro_uds_id
 from ..epic_grpc import epic_image_pb2
 from ..epic_grpc.epic_image_pb2 import empty
-from ..epic_grpc.epic_image_pb2 import epic_image
+from ..epic_grpc.epic_image_pb2 import epic_image, watchsourceinfo
 from ..epic_grpc.epic_image_pb2_grpc import epic_post_processStub
-from ..epic_types import NDArrayNum_t
+from ..epic_types import NDArrayNum_t, WatchMode_t
+from datetime import datetime, timedelta
 
 
 warnings.simplefilter("always", DeprecationWarning)
@@ -147,7 +148,9 @@ class EpicRPCClient:
         # ) as channel:
         print("Starting to send data")
         try:
-            for i in self.get_dummy_stream(n_items, cadence, chunk_size=chunk_size):
+            for i in self.get_dummy_stream(
+                n_items, cadence, chunk_size=chunk_size
+            ):
                 t = time.time()
                 print("Sending")
                 _ = self._stub.filter_and_save_chunk(i)
@@ -156,7 +159,9 @@ class EpicRPCClient:
             print("Unable to send data")
             print(e)
 
-    def send_data(self, header_arr: List[str], data: NDArrayNum_t) -> Optional[empty]:
+    def send_data(
+        self, header_arr: List[str], data: NDArrayNum_t
+    ) -> Optional[empty]:
         try:
             response: empty = self._stub.filter_and_save_chunk(
                 self.chunk_data(header_arr, data)
@@ -166,6 +171,47 @@ class EpicRPCClient:
         except Exception as e:
             print(e)
             return None
+
+    @staticmethod
+    def add_to_watchlist(
+        source_name: str,
+        ra: float,
+        dec: float,
+        author: str = "batman",
+        event_time: Optional[datetime] = None,
+        t_start: Optional[datetime] = None,
+        t_end: Optional[datetime] = None,
+        reason: str = "Detection of FRBs",
+        watch_mode: WatchMode_t = "continuous",
+        patch_type: int = 5,
+        event_type: str = "Manual trigger",
+        addr: str = None
+    ) -> str:
+        def fmt_time(t: Optional[datetime], add_s: float = 0) -> str:
+            return (
+                t.isoformat()
+                if t is not None
+                else (datetime.utcnow() + timedelta(seconds=add_s)).isoformat()
+            )
+
+        watch_payload = dict(
+            source_name=source_name,
+            ra=ra,
+            dec=dec,
+            author=author,
+            event_time=fmt_time(event_time),
+            t_start=fmt_time(t_start),
+            t_end=fmt_time(t_end, add_s=7 * 86400),
+            reason=reason,
+            watch_mode=watch_mode,
+            patch_type=patch_type,
+            event_type=event_type,
+        )
+        print(watch_payload)
+        with grpc.insecure_channel(addr) as channel:
+            stub = epic_post_processStub(channel)
+            response = stub.watch_source(watchsourceinfo(srcinfo_json=json.dumps(watch_payload)))
+            return response.msg
 
     # async def send_data_aio(
     #     self, header_arr: List[str], data: NDArrayNum_t

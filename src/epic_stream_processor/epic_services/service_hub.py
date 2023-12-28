@@ -10,10 +10,10 @@ from typing import List
 
 import pandas as pd
 from apscheduler.schedulers.background import BackgroundScheduler
-from geoalchemy2 import Geometry
+# from geoalchemy2 import Geometry
 from pytz import utc  # type: ignore[import]
 from sqlalchemy.engine import Engine
-from streamz import Stream
+#from streamz import Stream
 
 
 from ..epic_orm.pg_pixel_storage import Database
@@ -29,7 +29,7 @@ class ServiceHub:
     def __init__(self, engine: Engine | None = None) -> None:
         """connect to ectd and and also have a scheduler from apscheduler"""
         self._scheduler = BackgroundScheduler(timezone=utc)
-        self._pipeline = Stream(stream_name="service_hub")
+        #self._pipeline = Stream(stream_name="service_hub")
         self._scheduler.start()
         self._pgdb: Database
         self._connect_pgdb(engine)
@@ -37,9 +37,9 @@ class ServiceHub:
 
         # define the stream processor timed_window(5)
         # IMPORTANT: If using a timed window, never set the window to 0!
-        self._pipeline.map(ServiceHub.detect_transient).timed_window(5).sink(
-            self.insert_multi_epoch_pgdb
-        )
+        # self._pipeline.map(ServiceHub.detect_transient).timed_window(5).sink(
+        #     self.insert_multi_epoch_pgdb
+        # )
 
     def __call__(self, *args, **kwargs) -> ServiceHub:  # type: ignore[no-untyped-def]
         if not hasattr(self, "instance"):
@@ -50,8 +50,9 @@ class ServiceHub:
         # establish postgres connection
         # TODO: fetch the connection details from sys config service
 
+        self._pgdb = Database(engine=engine, create_all_tables=False)
         try:
-            self._pgdb = Database(engine=engine, create_all_tables=True)
+            print()
             # self._pg_conn = psycopg.connect(
             #     dbname="postgres", user="batman", host="/var/run/postgresql"
             # )

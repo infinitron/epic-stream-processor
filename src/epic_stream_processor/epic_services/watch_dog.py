@@ -44,7 +44,7 @@ class WatchDog:
         )
         self._update_watch_df()
         self._service_Hub._scheduler.add_job(
-            self._update_watch_df, "interval", minutes=5
+            self._update_watch_df, "interval", minutes=1
         )
         print("Watch list")
         print(self._watch_df)
@@ -58,17 +58,15 @@ class WatchDog:
         t_start: datetime,
         t_end: Optional[datetime] = None,
         watch_mode: WatchMode_t = "continuous",
-        patch_type: Patch_t = "3x3",
+        patch_type: Patch_t = 5,
     ) -> None:
-
-        if watch_mode == "continuous":
+        if watch_mode == "continuous" and t_end is not None:
             t_end = datetime.utcnow() + timedelta(days=99 * 365.25)
 
-        if t_end is None:
+        if watch_mode == "timed" and t_end is None:
             t_end = t_start + timedelta(days=7)
 
-        self._staging_watch_df = self._staging_watch_df.append(
-            dict(
+        new_row_df = pd.DataFrame([dict(
                 id=id,
                 source_name=name,
                 ra=ra,
@@ -77,32 +75,49 @@ class WatchDog:
                 t_start=t_start,
                 t_end=t_end,
                 watch_mode=watch_mode,
-            ),
+            )])
+        
+
+        self._staging_watch_df = pd.concat([self._staging_watch_df, new_row_df],
             ignore_index=True,
         )
+
+        print(self._staging_watch_df)
 
         self._update_watch_df()
         # if watch_until is not None and watch_mode != "continuous":
         #     self._add_watch_timer(f"{id}", watch_until)
 
     def _update_watch_df(self) -> None:
+        print("Updating watchdf")
         stag = self._staging_watch_df
+        if len(stag.index)==0:
+            return
         now = datetime.utcnow()
 
         watched_ids = stag[stag["t_end"] <= now]["id"].to_numpy()
         if watched_ids.shape[0] == 0:
-            if self._watch_df.shape[0] == 0 and self._staging_watch_df.shape[0] > 0:
+            if (
+                self._watch_df.shape[0] == 0
+                and self._staging_watch_df.shape[0] > 0
+            ):
                 self._watch_df = self._staging_watch_df[
                     ["id", "source_name", "ra", "dec", "patch_type"]
                 ]
-            return
+            # return
 
         self._staging_watch_df = stag[(stag["t_end"] > now)]
         self._watch_df = self._staging_watch_df[
             self._staging_watch_df["t_start"] < now
         ][["id", "source_name", "ra", "dec", "patch_type"]]
 
-        upd_dicts = [dict(_id=int(i), watch_status="watched") for i in watched_ids]
+        print(self._watch_df)
+
+        upd_dicts = [
+            dict(_id=int(i), watch_status="watched") for i in watched_ids
+        ]
+        if len(upd_dicts) == 0:
+            return
         stmt = (
             update(EpicWatchdogTable)  # type: ignore[arg-type]
             .where(EpicWatchdogTable.id == bindparam("_id"))
@@ -111,9 +126,12 @@ class WatchDog:
         self._service_Hub._pgdb._connection.execute(
             stmt, upd_dicts
         )  # type: ignore[no-untyped-call]
+        self._service_Hub._pgdb._connection.commit()
 
     def add_voevent_and_watch(self, voevent: str) -> None:
-        raise NotImplementedError("External VOEvent handler not implemented yet")
+        raise NotImplementedError(
+            "External VOEvent handler not implemented yet"
+        )
 
     def add_source_and_watch(
         self,
@@ -142,15 +160,17 @@ class WatchDog:
             raise Exception(f"{source_name} already exists in the watch list.")
 
         t_start_dt = datetime.fromisoformat(t_start) or datetime.utcnow()
-        t_end_dt = datetime.fromisoformat(t_end) or datetime.utcnow() + timedelta(
-            days=7
-        )
+        t_end_dt = datetime.fromisoformat(
+            t_end
+        ) or datetime.utcnow() + timedelta(days=7)
         stmt = (
             insert(EpicWatchdogTable)  # type: ignore[arg-type]
             .values(
                 source=source_name,
-                event_skypos=f"SRID=4326; POINT({ra} {dec})",
-                event_time=datetime.fromisoformat(event_time) or datetime.utcnow(),
+                ra_deg=ra,
+                dec_deg=dec,
+                event_time=datetime.fromisoformat(event_time)
+                or datetime.utcnow(),
                 event_type=event_type,
                 t_start=t_start_dt,
                 t_end=t_end_dt,
@@ -163,12 +183,28 @@ class WatchDog:
             )
             .returning(EpicWatchdogTable.id)
         )
-
+        print(stmt)
         result = self._service_Hub._pgdb._connection.execute(stmt).all()  # type: ignore[no-untyped-call]
         id = result[0][0]
+        print(
+            self._service_Hub._pgdb._connection.execute(
+                select(EpicWatchdogTable)
+            ).all()
+        )
+        print("ID:", id)
+        self._service_Hub._pgdb._connection.commit()
+        # self._service_Hub._pgdb._session.commit()
+        # self._service_Hub._pgdb._session.flush()
 
         self.watch_source(
-            id, source_name, ra, dec, t_start_dt, t_end_dt, watch_mode, patch_type
+            id,
+            source_name,
+            ra,
+            dec,
+            t_start_dt,
+            t_end_dt,
+            watch_mode,
+            patch_type,
         )
 
     def _load_sources(self, overwrite: bool = False) -> None:
@@ -224,7 +260,9 @@ class EpicPixels:
 
         self.filename = self.img_hdr["FILENAME"]
 
-    def ra2x(self, ra: Union[float, NDArrayNum_t]) -> Union[float, NDArrayNum_t]:
+    def ra2x(
+        self, ra: Union[float, NDArrayNum_t]
+    ) -> Union[float, NDArrayNum_t]:
         """Return the X-pixel (0-based index) number given an RA"""
         pix = (ra - self.ra0) / self.dx + self.x0
         return self.nearest_pix(pix) - 1
@@ -236,7 +274,9 @@ class EpicPixels:
         nearest_pix: Union[float, NDArrayNum_t] = np.floor(pix + frac_dist)
         return nearest_pix
 
-    def dec2y(self, dec: Union[float, NDArrayNum_t]) -> Union[float, NDArrayNum_t]:
+    def dec2y(
+        self, dec: Union[float, NDArrayNum_t]
+    ) -> Union[float, NDArrayNum_t]:
         """Return the Y-pixel (0-based index) number given a DEC"""
         pix = (dec - self.dec0) / self.dy + self.y0
         return self.nearest_pix(pix) - 1
@@ -252,7 +292,10 @@ class EpicPixels:
         is_fov: NDArrayBool_t = np.less_equal(
             np.linalg.norm(
                 np.vstack(
-                    [self.ra2x(ra) - self.xdim / 2, self.dec2y(dec) - self.ydim / 2]
+                    [
+                        self.ra2x(ra) - self.xdim / 2,
+                        self.dec2y(dec) - self.ydim / 2,
+                    ]
                 ),
                 axis=0,
             ),
@@ -271,7 +314,9 @@ class EpicPixels:
         # print(np.vstack([x - self.xdim/2,y - self.ydim/2]))
         # print(np.linalg.norm(np.vstack([x - self.xdim/2,y - self.ydim/2]),axis=0))
         is_fov: NDArrayBool_t = np.less_equal(
-            np.linalg.norm(np.vstack([x - self.xdim / 2, y - self.ydim / 2]), axis=0),
+            np.linalg.norm(
+                np.vstack([x - self.xdim / 2, y - self.ydim / 2]), axis=0
+            ),
             self.max_rad,
         )
         return is_fov
@@ -280,7 +325,9 @@ class EpicPixels:
         ihdr = self.img_hdr
         return dict(
             id=[str(uuid4())],
-            img_time=[datetime.strptime(ihdr["DATETIME"], "%Y-%m-%dT%H:%M:%S.%f")],
+            img_time=[
+                datetime.strptime(ihdr["DATETIME"], "%Y-%m-%dT%H:%M:%S.%f")
+            ],
             n_chan=[int(ihdr["NAXIS3"])],
             n_pol=[int(ihdr["NAXIS4"])],
             chan0=[ihdr["CRVAL3"] - ihdr["CDELT3"] * ihdr["CRPIX3"]],
@@ -289,7 +336,7 @@ class EpicPixels:
             img_size=[str((ihdr["NAXIS1"], ihdr["NAXIS2"]))],
             int_time=self.inttime,
             filename=self.filename,
-            source_names=[source_names.tolist()]
+            source_names=[source_names.tolist()],
         )
 
     def store_pg(self, s_hub: ServiceHub) -> None:
@@ -306,7 +353,11 @@ class EpicPixels:
         self.ra_l = self._watch_df["ra"].to_numpy()
         self.dec_l = self._watch_df["dec"].to_numpy()
         self.patch_size_l = (
-            self._watch_df["patch_type"].str.split("x").str[0].astype(float).to_numpy()
+            self._watch_df["patch_type"]
+            .str.split("x")
+            .str[0]
+            .astype(float)
+            .to_numpy()
         )
         self.patch_npix_l = self.patch_size_l**2
 
@@ -315,7 +366,9 @@ class EpicPixels:
         self.x_l, self.y_l = self.wcs.all_world2pix(
             self.ra_l, self.dec_l, 1
         )  # 1-based index
-        self.x_l, self.y_l = self.nearest_pix(self.x_l), self.nearest_pix(self.y_l)
+        self.x_l, self.y_l = self.nearest_pix(self.x_l), self.nearest_pix(
+            self.y_l
+        )
         self.in_fov = np.logical_and((self.x_l >= 0), (self.y_l >= 0))
 
         # filter the indices or sources outside the sky
@@ -361,10 +414,13 @@ class EpicPixels:
 
         # test fov crossing
         groups = np.split(
-            self.watch_l[-2, :], np.unique(self.watch_l[0, :], return_index=True)[1][1:]
+            self.watch_l[-2, :],
+            np.unique(self.watch_l[0, :], return_index=True)[1][1:],
         )
 
-        is_out_fov = [i if np.all(i) else np.logical_and(i, False) for i in groups]
+        is_out_fov = [
+            i if np.all(i) else np.logical_and(i, False) for i in groups
+        ]
 
         # filter patches crossing fov
         is_out_fov = np.concatenate(is_out_fov).astype(bool).ravel()
@@ -383,7 +439,8 @@ class EpicPixels:
             self.watch_l[3, :].astype(int) - 1,
         ]
         pix_values_l = [
-            pix_values[:, :, :, i].ravel().tolist() for i in range(pix_values.shape[-1])
+            pix_values[:, :, :, i].ravel().tolist()
+            for i in range(pix_values.shape[-1])
         ]
 
         skypos_pg_fmt = [
@@ -409,13 +466,16 @@ class EpicPixels:
         ]
         source_names = self.src_l[self.watch_l[0, :].astype(int)]
 
-        self.pixel_meta_df = pd.DataFrame.from_dict(self.header_to_metadict(
-            source_names=np.unique(source_names)
-        ))
+        self.pixel_meta_df = pd.DataFrame.from_dict(
+            self.header_to_metadict(source_names=np.unique(source_names))
+        )
 
         self.pixel_idx_df = pd.DataFrame.from_dict(
             dict(
-                id=[self.pixel_meta_df.iloc[0]["id"] for i in range(len(l_vals))],
+                id=[
+                    self.pixel_meta_df.iloc[0]["id"]
+                    for i in range(len(l_vals))
+                ],
                 pixel_coord=pix_coord_fmt,
                 pixel_values=pix_values_l,
                 pixel_skypos=skypos_pg_fmt,
@@ -431,7 +491,6 @@ class EpicPixels:
         # source_list: pd.DataFrame,
         t_obs_str: str,
     ) -> None:
-
         for i, src in enumerate(self.src_l):
             if src in DynSources.bodies:
                 self.ra_l[i], self.dec_l[i] = DynSources.get_lwasv_skypos(

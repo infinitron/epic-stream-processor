@@ -121,7 +121,7 @@ def start(addr):
 @click.option(
     "-pt",
     "--patch-type",
-    help="Size of the aggregation window (nxn). Defaults to 3x3",
+    help="Size of the aggregation window (nxn). Defaults to 5x5",
     default=5,
 )
 @click.option(
@@ -151,6 +151,12 @@ def start(addr):
     help="Duration of the watch. Defaults to one week. Provide duration in human readable form. For example,  as '6d23h59m59s9ms1us' or '7d'. This value is not used when watch_mode is set to continuous."
     #  But why microseconds? Because Batman wants to.
 )
+@click.option(
+    "-addr",
+    "--watchdog-addr",
+    help="Address for the watchdog gRPC service",
+    required=True
+)
 def watch(
     source_name: str,
     right_ascension: Union[float, str],
@@ -162,6 +168,7 @@ def watch(
     author: str,
     watch_begin: Optional[str],
     watch_duration: Optional[str],
+    watchdog_addr: str
 ) -> None:
     """Watch for the specified source in the incoming data.
 
@@ -200,14 +207,21 @@ def watch(
         t_end = t_start + timedelta(days=7)
     else:
         import humanreadable as hr
-
-        t_end = t_start + timedelta(
+        print(timedelta(
             days=hr.Time(watch_duration).days,
             hours=hr.Time(watch_duration).hours,
             minutes=hr.Time(watch_duration).minutes,
             seconds=hr.Time(watch_duration).seconds,
             milliseconds=hr.Time(watch_duration).milliseconds,
             microseconds=hr.Time(watch_duration).microseconds,
+        ))
+        t_end = t_start + timedelta(
+            #days=hr.Time(watch_duration).days,
+            #hours=hr.Time(watch_duration).hours,
+            #minutes=hr.Time(watch_duration).minutes,
+            #seconds=hr.Time(watch_duration).seconds,
+            milliseconds=hr.Time(watch_duration).milliseconds,
+            #microseconds=hr.Time(watch_duration).microseconds,
         )
 
     if watch_mode == "continuous":
@@ -223,6 +237,7 @@ def watch(
         reason=reason,
         watch_mode=watch_mode,
         patch_type=patch_type,
+        addr = watchdog_addr
     )
 
     if resp == "added":
