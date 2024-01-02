@@ -78,13 +78,17 @@ class Database:
     def __init__(
         self, engine: Optional[Engine] = None, create_all_tables: bool = False
     ) -> None:
-        self._engine = engine or create_engine(_default_pg_conn_str)
+        self._engine = engine or create_engine(_default_pg_conn_str, pool_pre_ping=True)
 
         self._connection = self._engine.connect()
         self._session = Session(self._connection, autoflush=True)
 
         if create_all_tables:
             self.create_all_tables()
+    
+    def reconnect(self) -> None:
+        self._connection.close()
+        self._connection = self._engine.connect()
 
     def create_all_tables(self) -> None:
         Base.metadata.create_all(bind=self._connection, checkfirst=True)

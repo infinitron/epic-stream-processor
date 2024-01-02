@@ -60,7 +60,14 @@ class epic_postprocessor(epic_post_servicer):
         for par in req_pars:
             if par not in req_pars:
                 raise Exception(f"{par} is required to watch")
-        self.watcher.add_source_and_watch(**config)
+            
+        try:
+            self.watcher.add_source_and_watch(**config)
+        except Exception as e:
+            print('PgDB connection lost. Reconnecting...')
+            self.storage_servicer._pgdb.reconnect()
+            self.watcher.add_source_and_watch(**config)
+
 
         return status(msg="added")
 
