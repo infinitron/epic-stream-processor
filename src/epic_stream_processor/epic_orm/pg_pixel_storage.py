@@ -50,7 +50,7 @@ class EpicImgMetadataTable(Base):
     epic_version = Column(Text, nullable=False)
     img_size = Column(PgPointType, nullable=False)
     int_time = Column(Float, nullable=False)
-    filename = Column(Text, nullable=False)
+    # filename = Column(Text, nullable=False)
     source_names = Column(pg_ARRAY(Text), nullable=False)
 
 
