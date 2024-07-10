@@ -44,7 +44,7 @@ class WatchDog:
         )
         self._update_watch_df()
         self._service_Hub._scheduler.add_job(
-            self._update_watch_df, "interval", minutes=1
+            self._update_watch_df, "interval", seconds=30
         )
         print("Watch list")
         print(self._watch_df)
