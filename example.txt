@@ -1,0 +1,7 @@
+python run.py watch -n "Cyg A" -ra "19:59:28.35656837" -dec "+40:44:02.0972325" -fmt hms -wm timed -R "A-team monitoring" -A batman -addr 169.254.128.1:1729
+
+29.5031258	65.7167542
+
+python run.py watch -n "FRB20180916B" -ra "29.5031258" -dec "65.7167542" -R "High fluence FRB repeater  monitoring" -A batman -addr 169.254.128.1:1729
+
+python run.py watch -n "Crab" -ra "83.633212" -dec "22.014460" -R "Monitoring giant pulses from  crab" -A batman -addr 169.254.128.1:1729 -wm timed
