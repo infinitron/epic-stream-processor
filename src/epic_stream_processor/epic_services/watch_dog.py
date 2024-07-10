@@ -90,6 +90,7 @@ class WatchDog:
 
     def _update_watch_df(self) -> None:
         print("Updating watchdf")
+        self._load_sources()
         stag = self._staging_watch_df
         if len(stag.index)==0:
             return
