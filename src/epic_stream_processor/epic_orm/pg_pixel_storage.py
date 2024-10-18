@@ -118,7 +118,11 @@ class Database:
         ).where(watch_d.watch_status == "watching")
         # stmnt = select(EpicWatchdogTable).where(EpicWatchdogTable.watch_status == "watching")
         # print(stmnt)
-        return pd.DataFrame(self._connection.execute(stmnt).all())
+        with self._engine.connect() as conn:
+            watch_list = conn.execute(stmnt).all()
+            conn.commit()
+
+        return pd.DataFrame(watch_list)
         # return pd.read_sql(
         #     stmnt,
         #     self._engine,

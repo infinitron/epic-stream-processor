@@ -44,7 +44,7 @@ class WatchDog:
         )
         self._update_watch_df()
         self._service_Hub._scheduler.add_job(
-            self._update_watch_df, "interval", seconds=30
+            self._update_watch_df, "interval", seconds=5
         )
         print("Watch list")
         print(self._watch_df)
@@ -66,19 +66,23 @@ class WatchDog:
         if watch_mode == "timed" and t_end is None:
             t_end = t_start + timedelta(days=7)
 
-        new_row_df = pd.DataFrame([dict(
-                id=id,
-                source_name=name,
-                ra=ra,
-                dec=dec,
-                patch_type=patch_type,
-                t_start=t_start,
-                t_end=t_end,
-                watch_mode=watch_mode,
-            )])
-        
+        new_row_df = pd.DataFrame(
+            [
+                dict(
+                    id=id,
+                    source_name=name,
+                    ra=ra,
+                    dec=dec,
+                    patch_type=patch_type,
+                    t_start=t_start,
+                    t_end=t_end,
+                    watch_mode=watch_mode,
+                )
+            ]
+        )
 
-        self._staging_watch_df = pd.concat([self._staging_watch_df, new_row_df],
+        self._staging_watch_df = pd.concat(
+            [self._staging_watch_df, new_row_df],
             ignore_index=True,
         )
 
@@ -92,7 +96,7 @@ class WatchDog:
         print("Updating watchdf")
         self._load_sources()
         stag = self._staging_watch_df
-        if len(stag.index)==0:
+        if len(stag.index) == 0:
             return
         now = datetime.utcnow()
 
@@ -124,10 +128,13 @@ class WatchDog:
             .where(EpicWatchdogTable.id == bindparam("_id"))
             .values({"watch_status": bindparam("watch_status")})
         )
-        self._service_Hub._pgdb._connection.execute(
-            stmt, upd_dicts
-        )  # type: ignore[no-untyped-call]
-        self._service_Hub._pgdb._connection.commit()
+        with self._service_Hub._pgdb._engine.connect() as conn:
+            conn.execute(stmt, upd_dicts)
+            conn.commit()
+        # self._service_Hub._pgdb._connection.execute(
+        #     stmt, upd_dicts
+        # )  # type: ignore[no-untyped-call]
+        # self._service_Hub._pgdb._connection.commit()
 
     def add_voevent_and_watch(self, voevent: str) -> None:
         raise NotImplementedError(
@@ -185,7 +192,10 @@ class WatchDog:
             .returning(EpicWatchdogTable.id)
         )
         print(stmt)
-        result = self._service_Hub._pgdb._connection.execute(stmt).all()  # type: ignore[no-untyped-call]
+        with self._service_Hub._pgdb._engine.connect() as conn:
+            result = conn.execute(stmt).all()  # type: ignore[no-untyped-call]
+            conn.commit()
+
         id = result[0][0]
         print(
             self._service_Hub._pgdb._connection.execute(
@@ -193,7 +203,7 @@ class WatchDog:
             ).all()
         )
         print("ID:", id)
-        self._service_Hub._pgdb._connection.commit()
+        # self._service_Hub._pgdb._connection.commit()
         # self._service_Hub._pgdb._session.commit()
         # self._service_Hub._pgdb._session.flush()
 
