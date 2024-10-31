@@ -167,11 +167,16 @@ class epic_postprocessor(epic_post_servicer):
 #     return f"{socket.gethostname()}_epic_processor"
 
 
-def serve(address: str = "2023", max_workers=1) -> None:
+def serve(address: str = "2023", max_workers=20) -> None:
     server = grpc.server(
         futures.ThreadPoolExecutor(max_workers=max_workers),
-        options=[("grpc.max_receive_message_length", -1)],
-        maximum_concurrent_rpcs=2,
+        options=[
+                ("grpc.max_send_message_length", -1),
+                ("grpc.max_concurrent_streams", 100),
+                ("grpc.http2.lookahead_bytes", 1 << 13)
+                # ("SingleThreadedUnaryStream", 1),
+            ],
+        maximum_concurrent_rpcs=1000,
     )
     print("Setting up")
     epic_image_pb2_grpc.add_epic_post_processServicer_to_server(
